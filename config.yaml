@@ -1,0 +1,78 @@
+# Voice AI Platform Configuration
+# Hot-Swappable Pipeline Defaults
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  log_level: "info"
+
+# Default Model Selection (Optimized for Indian Telecalling < ₹1.10/min)
+pipeline:
+  default_stt: "groq"        # Options: groq, deepgram, mock
+  default_llm: "groq"        # Options: groq, gemini, deepseek, mock
+  default_tts: "edgetts"     # Options: edgetts, sarvam, cartesia, mock
+
+# Speech-To-Text (STT) Settings
+stt:
+  groq:
+    api_key: "${GROQ_API_KEY}"
+    model: "whisper-large-v3-turbo"   # ✅ Best & fastest — optimized Whisper for Hindi/Hinglish/English (~150ms on Groq LPU)
+    language: "hi"                   # Supports Hindi, Hinglish, English
+    prompt: "Namaste, main Hindi aur Hinglish mein baat kar raha hoon." # Context hint to prevent Whisper language hallucination
+  deepgram:
+    api_key: "${DEEPGRAM_API_KEY}"
+    model: "nova-2-general"
+    language: "en-IN"
+    smart_format: true
+    interim_results: true
+
+# LLM Brain Settings
+llm:
+  groq:
+    api_key: "${GROQ_API_KEY}"
+    # ── Groq Latest Models ────────────────────────────────────────────────
+    # qwen/qwen3.8-27b        → ✅ Ultra-fast (20ms), superb multilingual & Hindi conversational flow
+    # openai/gpt-oss-120b     → Heavy reasoning / complex logic
+    # qwen/qwen3.6-27b        → Multilingual reasoning
+    model: "qwen/qwen3.8-27b"        # ✅ Best & fastest for natural Hindi/Hinglish telecalling
+    temperature: 0.3
+    max_tokens: 150
+  gemini:
+    api_key: "${GEMINI_API_KEY}"
+    model: "gemini-2.0-flash"
+    temperature: 0.3
+    max_tokens: 150
+  deepseek:
+    api_key: "${DEEPSEEK_API_KEY}"
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-chat"
+    temperature: 0.3
+
+# Text-To-Speech (TTS) Settings
+tts:
+  edgetts:
+    voice: "hi-IN-SwaraNeural"    # Female Hindi: hi-IN-SwaraNeural, Male Hindi: hi-IN-MadhurNeural, Indian English: en-IN-NeerjaNeural
+    rate: "+10%"
+    pitch: "+0Hz"
+  sarvam:
+    api_key: "${SARVAM_API_KEY}"
+    speaker: "meera"              # Authentic Indian vernacular voices
+    language_code: "hi-IN"
+    model: "bulbul:v1"
+  cartesia:
+    api_key: "${CARTESIA_API_KEY}"
+    model_id: "sonic-multilingual"
+    voice_id: "694f120f-baa9-4938-8996-9b603e30dceb"
+
+# Audio & Voice Activity Detection (VAD) Settings
+vad:
+  chunk_duration_ms: 20
+  sample_rate: 16000
+  silence_threshold_ms: 500       # How long to wait after user stops speaking before LLM responds
+  energy_threshold: 0.015         # Sensitivity for voice activation
+  barge_in_enabled: true          # Stop AI voice immediately when user interrupts
+
+# Telephony Gateway Defaults
+telephony:
+  provider: "generic"             # exotel, plivo, twilio, generic
+  sample_rate: 8000               # 8kHz μ-law standard telephony

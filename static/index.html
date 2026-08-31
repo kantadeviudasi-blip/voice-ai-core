@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice AI Agent - Live Testing Console</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --accent: #58a6ff;
+            --accent-green: #2ea043;
+            --accent-red: #da3633;
+            --accent-orange: #f0883e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 24px; }
+        .container { max-width: 960px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px; }
+        h1 { color: #fff; font-size: 24px; }
+        .badge { background: #238636; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+        label { font-size: 13px; color: #8b949e; display: block; margin-bottom: 6px; }
+        select, input, textarea, button { width: 100%; padding: 10px; background: #0d1117; border: 1px solid var(--border); color: #fff; border-radius: 6px; margin-bottom: 12px; font-size: 14px; }
+        button { background: var(--accent); color: #000; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        button.danger { background: var(--accent-red); color: #fff; }
+        button.success { background: var(--accent-green); color: #fff; }
+        .log-box { background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 12px; height: 280px; overflow-y: auto; font-family: monospace; font-size: 13px; }
+        .msg-user { color: #58a6ff; margin-bottom: 8px; }
+        .msg-agent { color: #7ee787; margin-bottom: 8px; }
+        .msg-sys { color: #8b949e; margin-bottom: 8px; font-style: italic; }
+        .metrics-row { display: flex; gap: 10px; margin-top: 15px; }
+        .metric-card { flex: 1; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+        .metric-val { font-size: 18px; font-weight: bold; color: var(--accent-orange); }
+        .metric-label { font-size: 11px; color: #8b949e; margin-top: 4px; }
+        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #8b949e; margin-right: 6px; }
+        .status-active { background: #2ea043; box-shadow: 0 0 8px #2ea043; }
+        .audio-wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 30px; margin-bottom: 10px; }
+        .bar { width: 4px; height: 6px; background: #58a6ff; border-radius: 2px; transition: height 0.1s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🎙️ Voice AI Agent Console</h1>
+                <p style="color: #8b949e; font-size: 13px; margin-top: 4px;">Ultra-Low Latency Indian Telecalling Engine &middot; <span class="badge">&lt; ₹1.10/min</span></p>
+            </div>
+            <div>
+                <span id="conn-dot" class="status-indicator"></span>
+                <span id="conn-status" style="font-size: 13px;">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Left: Controls -->
+            <div class="card">
+                <h3 style="margin-bottom: 12px; color: #fff;">1. Call Configuration</h3>
+                <label>Select Active Client Tenant:</label>
+                <select id="tenantSelect">
+                    <option value="apex-solar-raipur">☀️ Apex Solar Solutions (Raipur)</option>
+                    <option value="real-estate-demo">Sunrise Heights (Real Estate)</option>
+                    <option value="dental-clinic-demo">Apex Dental Care (Clinic)</option>
+                </select>
+
+                <div class="audio-wave" id="waveBox">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button id="startCallBtn" class="success" onclick="startCall()">📞 Start Call</button>
+                    <button id="endCallBtn" class="danger" onclick="endCall()" disabled>🔴 End Call</button>
+                </div>
+
+                <button id="bargeInBtn" style="margin-top: 10px; background: var(--accent-orange); color: #000;" onclick="triggerBargeIn()">⚡ Barge-in (Interrupt AI Voice)</button>
+
+                <h3 style="margin-top: 20px; margin-bottom: 8px; color: #fff;">💬 Quick Hindi / Hinglish Test Prompts:</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Solar lagwane mein kitna kharcha aayega?')">💰 Solar kharcha?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('78,000 ki subsidy kaise milegi?')">📜 Subsidy details?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Main abhi busy hoon, kal subah 11 baje call karo.')">⏰ Abhi busy hoon</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('WhatsApp par details bhej dijiye.')">📱 WhatsApp par bhejo</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Kya mere 2 BHK flat ke liye solar theek rahega?')">🏢 Flat / Space query</button>
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 4px;">
+                    <input type="text" id="textPromptInput" placeholder="Type Hindi/Hinglish message (e.g. Subsidy batao)..." style="margin-bottom: 0;" onkeydown="if(event.key==='Enter') sendTextInput()">
+                    <button style="width: 80px; margin-bottom: 0; background: var(--accent);" onclick="sendTextInput()">Send</button>
+                </div>
+
+                <h3 style="margin-top: 24px; margin-bottom: 12px; color: #fff;">2. Instant Company Onboard</h3>
+                <input type="text" id="newCompany" placeholder="Company Name (e.g. Apex Solar)">
+                <input type="text" id="newAgent" placeholder="Agent Name (e.g. Sneha)" value="Sneha">
+                <textarea id="newDoc" rows="3" placeholder="Paste Company brochure, pricing, or FAQs here..."></textarea>
+                <button onclick="onboardNewTenant()">⚡ Synthesize & Onboard Agent</button>
+            </div>
+
+            <!-- Right: Live Conversation & Latency -->
+            <div class="card">
+                <h3 style="margin-bottom: 12px; color: #fff;">Live Call Transcript & Audio Stream</h3>
+                <div id="transcriptBox" class="log-box">
+                    <div class="msg-sys">[System] Ready. Click "Start Call" to speak via microphone or send Hindi test prompts!</div>
+                </div>
+
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <div id="m-stt" class="metric-val">-- ms</div>
+                        <div class="metric-label">STT Latency</div>
+                    </div>
+                    <div class="metric-card">
+                        <div id="m-ttft" class="metric-val">-- ms</div>
+                        <div class="metric-label">TTFT (LLM)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div id="m-tts" class="metric-val">-- ms</div>
+                        <div class="metric-label">TTS Audio</div>
+                    </div>
+                    <div class="metric-card">
+                        <div id="m-total" class="metric-val" style="color: #7ee787;">-- ms</div>
+                        <div class="metric-label">Total Latency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let audioContext = null;
+        let audioInput = null;
+        let micWorkletNode = null;
+
+        // AudioWorklet processor code — inlined as a Blob to avoid needing a separate file.
+        const WORKLET_CODE = `
+        class PCMCaptureProcessor extends AudioWorkletProcessor {
+            process(inputs) {
+                const channel = inputs[0]?.[0];
+                if (channel && channel.length > 0) {
+                    const pcm = new Int16Array(channel.length);
+                    for (let i = 0; i < channel.length; i++) {
+                        pcm[i] = Math.max(-1, Math.min(1, channel[i])) * 32767;
+                    }
+                    this.port.postMessage(pcm.buffer, [pcm.buffer]);
+                }
+                return true;
+            }
+        }
+        registerProcessor('pcm-capture-processor', PCMCaptureProcessor);
+        `;
+        const workletBlobUrl = URL.createObjectURL(new Blob([WORKLET_CODE], { type: 'application/javascript' }));
+
+        async function loadTenants() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                const select = document.getElementById('tenantSelect');
+                select.innerHTML = '';
+                for (const [id, name] of Object.entries(data.tenants)) {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = `${name} (${id})`;
+                    select.appendChild(opt);
+                }
+            } catch (e) {}
+        }
+        loadTenants();
+
+        function log(type, text) {
+            const box = document.getElementById('transcriptBox');
+            const div = document.createElement('div');
+            div.className = 'msg-' + type;
+            div.innerText = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function startCall() {
+            const tenant = document.getElementById('tenantSelect').value;
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${proto}//${window.location.host}/ws/audio/${tenant}`;
+
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = async () => {
+                document.getElementById('conn-dot').className = 'status-indicator status-active';
+                document.getElementById('conn-status').innerText = 'Call Live';
+                document.getElementById('startCallBtn').disabled = true;
+                document.getElementById('endCallBtn').disabled = false;
+                log('sys', '[Call Connected] Initializing microphone audio stream...');
+                await setupMicrophone();
+            };
+
+            ws.onmessage = (event) => {
+                if (typeof event.data === 'string') {
+                    const msg = JSON.parse(event.data);
+                    if (msg.event === 'transcript') {
+                        log(msg.data.role, (msg.data.role === 'assistant' ? '🤖 Agent: ' : '👤 User: ') + msg.data.text);
+                    } else if (msg.event === 'turn_metrics') {
+                        document.getElementById('m-stt').innerText = (msg.data.stt_latency_ms || 0) + ' ms';
+                        document.getElementById('m-ttft').innerText = (msg.data.ttft_ms || 0) + ' ms';
+                        document.getElementById('m-tts').innerText = (msg.data.tts_latency_ms || 0) + ' ms';
+                        document.getElementById('m-total').innerText = (msg.data.total_latency_ms || 0) + ' ms';
+                    } else if (msg.event === 'barge_in_interrupted') {
+                        resetAudioQueue();
+                        log('sys', '⚡ [Barge-In] Interrupted AI playback.');
+                    }
+                } else {
+                    playAudioBytes(event.data);
+                }
+            };
+
+            ws.onclose = () => {
+                endCall();
+            };
+        }
+
+        async function setupMicrophone() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+
+                await audioContext.audioWorklet.addModule(workletBlobUrl);
+
+                audioInput = audioContext.createMediaStreamSource(stream);
+                micWorkletNode = new AudioWorkletNode(audioContext, 'pcm-capture-processor');
+
+                micWorkletNode.port.onmessage = (e) => {
+                    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                    ws.send(e.data);
+                };
+
+                audioInput.connect(micWorkletNode);
+            } catch (err) {
+                log('sys', '[Audio Notice] Microphone not active or permission denied: ' + err.message + ' (You can still test via text input)');
+            }
+        }
+
+        // Sequential audio queue — schedules each sentence buffer to play after the previous one ends
+        let audioPlaybackTime = 0;
+
+        function playAudioBytes(arrayBuffer) {
+            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioContext.state === 'suspended') audioContext.resume();
+
+            audioContext.decodeAudioData(arrayBuffer.slice(0), (buffer) => {
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+
+                const startAt = Math.max(audioContext.currentTime, audioPlaybackTime);
+                source.start(startAt);
+                audioPlaybackTime = startAt + buffer.duration;
+            }, (err) => {
+                console.warn('[Audio] decodeAudioData note:', err);
+            });
+        }
+
+        function resetAudioQueue() {
+            audioPlaybackTime = 0;
+            if (audioContext) {
+                try {
+                    audioContext.close();
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch(e) {}
+            }
+        }
+
+        function triggerBargeIn() {
+            resetAudioQueue();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: 'interrupt' }));
+            }
+        }
+
+        function sendQuickPrompt(text) {
+            const input = document.getElementById('textPromptInput');
+            input.value = text;
+            sendTextInput();
+        }
+
+        function sendTextInput() {
+            const input = document.getElementById('textPromptInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                // Auto-start call if not already active
+                startCall().then(() => {
+                    setTimeout(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ action: 'text_input', text: text }));
+                            input.value = '';
+                        }
+                    }, 500);
+                });
+                return;
+            }
+
+            ws.send(JSON.stringify({ action: 'text_input', text: text }));
+            input.value = '';
+        }
+
+        function endCall() {
+            if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
+            if (ws) { ws.close(); ws = null; }
+            if (audioContext) { audioContext.close(); audioContext = null; }
+            document.getElementById('conn-dot').className = 'status-indicator';
+            document.getElementById('conn-status').innerText = 'Disconnected';
+            document.getElementById('startCallBtn').disabled = false;
+            document.getElementById('endCallBtn').disabled = true;
+            log('sys', '[Call Ended]');
+        }
+
+        async function onboardNewTenant() {
+            const name = document.getElementById('newCompany').value;
+            const agent = document.getElementById('newAgent').value;
+            const doc = document.getElementById('newDoc').value;
+
+            if (!name || !doc) { alert('Please enter company name and knowledge text.'); return; }
+
+            const formData = new FormData();
+            formData.append('company_name', name);
+            formData.append('agent_name', agent);
+            formData.append('document_text', doc);
+
+            const res = await fetch('/api/tenant/onboard', { method: 'POST', body: formData });
+            const json = await res.json();
+            if (json.success) {
+                alert('Successfully Onboarded! Tenant ID: ' + json.tenant_id);
+                loadTenants();
+            }
+        }
+    </script>
+</body>
+</html>
