@@ -1,8 +1,18 @@
-# Environment & Secrets
+# Environments
 .env
-*.env
+.env.*
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Secrets
 *.pem
 *.key
+*.cert
+*.crt
 
 # Python & Cache
 __pycache__/
@@ -11,8 +21,30 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+*.egg-info/
+.eggs/
+.tox/
 
 # Logs & temp
 *.log
 .DS_Store
 Thumbs.db
+*.bak
+*.swp
+*~
+
+# Models and Large Files
+*.onnx
+*.pt
+*.bin
+*.h5
+*.pb
+
+# IDEs
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
