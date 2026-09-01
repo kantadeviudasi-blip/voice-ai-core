@@ -13,6 +13,7 @@ from typing import Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 
@@ -29,8 +30,8 @@ if os.path.exists(ENV_PATH):
 
 from src.core.pipeline import VoicePipeline
 from src.core.metrics import CostEstimator
-from src.adapters.stt.deepgram_stt import DeepgramSTT
 from src.adapters.stt.groq_whisper_stt import GroqWhisperSTT
+from src.adapters.stt.deepgram_stt import DeepgramSTT
 from src.adapters.stt.mock_stt import MockSTT
 from src.adapters.llm.groq_llm import GroqLLM
 from src.adapters.llm.gemini_llm import GeminiLLM
@@ -45,18 +46,24 @@ from src.knowledge.prompt_builder import PromptBuilder, AgentProfile
 from src.knowledge.tenant_store import TenantStore
 from src.telephony.exotel_handler import ExotelStreamHandler
 from src.telephony.plivo_handler import PlivoStreamHandler
-from src.telephony.twilio_handler import TwilioStreamHandler
 
-# Load Configuration
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
-with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-    config = yaml.safe_load(f)
+from src.core.config import config as app_settings
+
+config = app_settings.model_dump()
 
 app = FastAPI(
     title="Voice AI Calling Agent Platform",
     description="High-concurrency, ultra-low latency, cost-optimized Voice Calling AI platform for Indian businesses.",
     version="1.0.0"
 )
+
+# NOTE: StaticFiles is intentionally NOT mounted here at root "/".
+# Mounting StaticFiles at root BEFORE WebSocket routes causes all WebSocket
+# upgrade requests to be intercepted and rejected with:
+#   AssertionError: assert scope["type"] == "http"
+# Instead, index.html is served via an explicit GET route below, and
+# StaticFiles is mounted at "/static" at the END of the file.
+static_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,37 +77,39 @@ tenant_store = TenantStore()
 
 def build_adapters(stt_choice: Optional[str] = None, llm_choice: Optional[str] = None, tts_choice: Optional[str] = None):
     """
-    Factory function to instantiate hot-swappable adapters.
-    STT  : Groq Whisper-large-v3-turbo (best & fastest Hindi/Hinglish)
-    LLM  : Groq openai/gpt-oss-20b (fast everyday chat) — fallback chain auto-tries newer models
-    TTS  : EdgeTTS (free, zero-key) | Sarvam | Cartesia
+    Factory function to instantiate pure, low-cost/self-hosted hot-swappable adapters:
+    STT  : Groq Whisper-large-v3-turbo (locked 'hi' / Hinglish prompt)
+    LLM  : Groq Qwen / Llama 3.3 (ultra-fast LPU generation)
+    TTS  : EdgeTTS (100% Free zero-key Indian natural voice) | Sarvam | Cartesia
     """
     groq_key = os.getenv("GROQ_API_KEY", "")
-    deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     deepseek_key = os.getenv("DEEPSEEK_API_KEY", "")
     sarvam_key = os.getenv("SARVAM_API_KEY", "")
+    cartesia_key = os.getenv("CARTESIA_API_KEY", "")
+    deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
 
     default_stt_cfg = config.get("pipeline", {}).get("default_stt", "groq")
     target_stt = stt_choice or default_stt_cfg
 
-    # STT Adapter Resolution: Groq Whisper -> Deepgram -> Mock
-    groq_stt_model = config.get("stt", {}).get("groq", {}).get("model", "whisper-large-v3-turbo")
-    if target_stt == "groq" and groq_key:
-        stt = GroqWhisperSTT(api_key=groq_key, model=groq_stt_model)
-    elif target_stt == "deepgram" and deepgram_key:
+    # STT Adapter Resolution: Deepgram -> Groq Whisper (LPU) -> Mock
+    if target_stt == "deepgram" and deepgram_key:
+        stt = DeepgramSTT(api_key=deepgram_key, language="hi")
+    elif target_stt == "groq" and groq_key:
+        groq_stt_model = config.get("stt", {}).get("groq", {}).get("model", "whisper-large-v3-turbo")
+        stt = GroqWhisperSTT(api_key=groq_key, model=groq_stt_model, language="hi")
+    elif deepgram_key and target_stt == "deepgram":
         stt = DeepgramSTT(api_key=deepgram_key)
     elif groq_key:
-        stt = GroqWhisperSTT(api_key=groq_key, model=groq_stt_model)
-    elif deepgram_key:
-        stt = DeepgramSTT(api_key=deepgram_key)
+        groq_stt_model = config.get("stt", {}).get("groq", {}).get("model", "whisper-large-v3-turbo")
+        stt = GroqWhisperSTT(api_key=groq_key, model=groq_stt_model, language="hi")
     else:
         stt = MockSTT()
 
     # LLM Adapter Resolution: Groq -> Gemini -> DeepSeek -> Mock
     default_llm_cfg = config.get("pipeline", {}).get("default_llm", "groq")
     target_llm = llm_choice or default_llm_cfg
-    groq_llm_model = config.get("llm", {}).get("groq", {}).get("model", "qwen/qwen3.8-27b")
+    groq_llm_model = config.get("llm", {}).get("groq", {}).get("model", "llama-3.3-70b-versatile")
 
     if target_llm == "groq" and groq_key:
         llm = GroqLLM(api_key=groq_key, model=groq_llm_model)
@@ -113,29 +122,57 @@ def build_adapters(stt_choice: Optional[str] = None, llm_choice: Optional[str] =
     else:
         llm = MockLLM()
 
-    # TTS Adapter Resolution: Cartesia -> Sarvam -> EdgeTTS (Free zero-key)
-    cartesia_key = os.getenv("CARTESIA_API_KEY", "")
+    # TTS Adapter Resolution: EdgeTTS (Free Zero-Key) | Sarvam | Cartesia
     cartesia_cfg = config.get("tts", {}).get("cartesia", {})
+    edgetts_cfg = config.get("tts", {}).get("edgetts", {})
 
-    if tts_choice == "cartesia" and cartesia_key:
+    default_tts_cfg = config.get("pipeline", {}).get("default_tts", "edgetts")
+    target_tts = tts_choice or default_tts_cfg
+
+    if target_tts == "cartesia" and cartesia_key:
         tts = CartesiaTTS(
             api_key=cartesia_key,
             model_id=cartesia_cfg.get("model_id", "sonic-multilingual"),
             voice_id=cartesia_cfg.get("voice_id", "694f120f-baa9-4938-8996-9b603e30dceb"),
         )
-    elif tts_choice == "sarvam" and sarvam_key:
+    elif target_tts == "sarvam" and sarvam_key:
+        tts = SarvamTTS(api_key=sarvam_key, speaker=config.get("tts", {}).get("sarvam", {}).get("speaker", "meera"))
+    elif cartesia_key and target_tts == "cartesia":
+        tts = CartesiaTTS(api_key=cartesia_key)
+    elif sarvam_key and target_tts == "sarvam":
         tts = SarvamTTS(api_key=sarvam_key)
     else:
-        tts = EdgeTTSAdapter(voice=config["tts"]["edgetts"]["voice"])
+        # EdgeTTS High Quality Expressive Indian Female Voice (Swara/Neerja) - Zero Cost
+        voice_name = edgetts_cfg.get("voice", "hi-IN-SwaraNeural")
+        rate_val = edgetts_cfg.get("rate", "+8%")
+        tts = EdgeTTSAdapter(voice=voice_name, rate=rate_val)
 
     return stt, llm, tts
 
-@app.get("/")
-def root():
+def create_pipeline(profile, stt_choice: Optional[str] = None, llm_choice: Optional[str] = None, tts_choice: Optional[str] = None) -> VoicePipeline:
+    """Factory helper to build a fully configured VoicePipeline with adaptive VAD & noise rejection."""
+    stt, llm, tts = build_adapters(stt_choice, llm_choice, tts_choice)
+    vad_cfg = config.get("vad", {})
+    return VoicePipeline(
+        stt=stt,
+        llm=llm,
+        tts=tts,
+        agent_profile=profile,
+        sample_rate=vad_cfg.get("sample_rate", 16000),
+        silence_threshold_ms=vad_cfg.get("silence_threshold_ms", 450),
+        energy_threshold=vad_cfg.get("energy_threshold", 0.022),
+        barge_in_enabled=vad_cfg.get("barge_in_enabled", True),
+        speech_onset_ms=vad_cfg.get("speech_onset_ms", 120.0),
+        min_utterance_speech_ms=vad_cfg.get("min_utterance_speech_ms", 300.0)
+    )
+
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint — returns platform status and active tenants."""
     return {
         "status": "online",
         "service": "Voice AI Calling Agent Core Engine",
-        "supported_telephony": ["Exotel", "Plivo", "Twilio", "Browser-WebSockets"],
+        "supported_telephony": ["FreeSWITCH/Asterisk-SIP", "Exotel", "Plivo", "Browser-WebSockets"],
         "active_tenants": tenant_store.list_tenants()
     }
 
@@ -225,10 +262,9 @@ async def universal_audio_stream(websocket: WebSocket, tenant_id: str):
     await websocket.accept()
     profile = tenant_store.get_profile(tenant_id)
     if not profile:
-        profile = tenant_store.get_profile("real-estate-demo")
+        profile = tenant_store.get_profile("apex-solar-solutions")
 
-    stt, llm, tts = build_adapters()
-    pipeline = VoicePipeline(stt=stt, llm=llm, tts=tts, agent_profile=profile)
+    pipeline = create_pipeline(profile)
 
     # Outbound callback to stream audio chunks back over WebSocket
     def on_outbound_audio(chunk: bytes):
@@ -248,6 +284,9 @@ async def universal_audio_stream(websocket: WebSocket, tenant_id: str):
         asyncio.create_task(_safe_send_text())
 
     pipeline.set_callbacks(outbound_audio_callback=on_outbound_audio, event_callback=on_event)
+
+    # Initialize streaming STT if supported
+    await pipeline.start()
 
     # Trigger Initial Agent Greeting
     asyncio.create_task(pipeline.trigger_greeting())
@@ -270,6 +309,8 @@ async def universal_audio_stream(websocket: WebSocket, tenant_id: str):
         pass
     except Exception as e:
         print(f"WS error: {e}")
+    finally:
+        await pipeline.close()
 
 @app.websocket("/ws/exotel/{tenant_id}")
 async def exotel_voice_stream(websocket: WebSocket, tenant_id: str):
@@ -277,9 +318,8 @@ async def exotel_voice_stream(websocket: WebSocket, tenant_id: str):
     Exotel Voice Stream WebSocket Bridge.
     """
     await websocket.accept()
-    profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("real-estate-demo")
-    stt, llm, tts = build_adapters()
-    pipeline = VoicePipeline(stt=stt, llm=llm, tts=tts, agent_profile=profile)
+    profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("apex-solar-solutions")
+    pipeline = create_pipeline(profile)
 
     handler = ExotelStreamHandler(on_audio_chunk=pipeline.process_incoming_audio)
 
@@ -293,6 +333,7 @@ async def exotel_voice_stream(websocket: WebSocket, tenant_id: str):
             asyncio.create_task(websocket.send_text(clear_msg))
 
     pipeline.set_callbacks(outbound_audio_callback=on_outbound_audio, event_callback=on_event)
+    await pipeline.start()
 
     try:
         while True:
@@ -304,19 +345,116 @@ async def exotel_voice_stream(websocket: WebSocket, tenant_id: str):
                 break
     except WebSocketDisconnect:
         pass
+    finally:
+        await pipeline.close()
+
+@app.websocket("/ws/sip/{tenant_id}")
+async def direct_sip_voice_stream(websocket: WebSocket, tenant_id: str):
+    """
+    Direct FreeSWITCH / Asterisk / Kamailio SIP Trunking WebSocket Bridge (mod_audio_fork).
+    Direct low-latency μ-law / linear PCM media stream without third-party aggregator markups.
+    """
+    await websocket.accept()
+    profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("apex-solar-solutions")
+    pipeline = create_pipeline(profile)
+
+    # Outbound callback to send raw audio frames back to the SIP Gateway
+    def on_outbound_audio(chunk: bytes):
+        async def _safe_send_bytes():
+            try:
+                await websocket.send_bytes(chunk)
+            except Exception:
+                pass
+        asyncio.create_task(_safe_send_bytes())
+
+    def on_event(event_type: str, data: dict):
+        if event_type == "barge_in_interrupted":
+            async def _safe_send_clear():
+                try:
+                    await websocket.send_text(json.dumps({"event": "clear_buffer"}))
+                except Exception:
+                    pass
+            asyncio.create_task(_safe_send_clear())
+
+    pipeline.set_callbacks(outbound_audio_callback=on_outbound_audio, event_callback=on_event)
+    await pipeline.start()
+
+    # Greet upon SIP session connect
+    asyncio.create_task(pipeline.trigger_greeting())
+
+    try:
+        while True:
+            data = await websocket.receive()
+            if "bytes" in data and data["bytes"]:
+                pipeline.process_incoming_audio(data["bytes"])
+            elif "text" in data and data["text"]:
+                msg = json.loads(data["text"])
+                if msg.get("event") == "hangup" or msg.get("type") == "stop":
+                    break
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await pipeline.close()
+
+@app.websocket("/ws/plivo/{tenant_id}")
+async def plivo_voice_stream(websocket: WebSocket, tenant_id: str):
+    """
+    Plivo Audio Streams WebSocket Bridge.
+    """
+    await websocket.accept()
+    profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("apex-solar-solutions")
+    pipeline = create_pipeline(profile)
+
+    handler = PlivoStreamHandler(on_audio_chunk=pipeline.process_incoming_audio)
+
+    def on_outbound_audio(chunk: bytes):
+        msg = handler.create_media_response(chunk)
+        asyncio.create_task(websocket.send_text(msg))
+
+    def on_event(event_type: str, data: dict):
+        if event_type == "barge_in_interrupted":
+            clear_msg = handler.create_clear_response()
+            asyncio.create_task(websocket.send_text(clear_msg))
+
+    pipeline.set_callbacks(outbound_audio_callback=on_outbound_audio, event_callback=on_event)
+    await pipeline.start()
+
+    try:
+        while True:
+            text_data = await websocket.receive_text()
+            res = handler.handle_message(text_data)
+            if res and res.get("type") == "start":
+                asyncio.create_task(pipeline.trigger_greeting())
+            elif res and res.get("type") == "stop":
+                break
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await pipeline.close()
 
 # ==============================================================================
-# INTERACTIVE BROWSER VOICE TEST CONSOLE
+# STATIC FILE SERVING  (MUST BE LAST — after all WebSocket routes are defined)
+# ==============================================================================
+# CRITICAL: app.mount() with StaticFiles must come AFTER all @app.websocket()
+# routes. If mounted at root "/" before websocket routes, StaticFiles intercepts
+# every WebSocket upgrade and crashes: assert scope["type"] == "http"
 # ==============================================================================
 
 STATIC_HTML_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "index.html")
 
+@app.get("/")
 @app.get("/test")
 def test_console():
+    """Serve the browser Voice AI Test Console UI (index.html)."""
     from fastapi.responses import FileResponse
     if os.path.exists(STATIC_HTML_PATH):
         return FileResponse(STATIC_HTML_PATH)
     return HTMLResponse("<h1>Voice AI Test Console: static/index.html not found</h1>")
 
+# Mount static assets (JS, CSS, images) at /static prefix — SAFE because it
+# does NOT conflict with root WebSocket paths like /ws/browser/...
+app.mount("/static", StaticFiles(directory=static_path), name="static_assets")
+
 if __name__ == "__main__":
     uvicorn.run("src.server:app", host=config["server"]["host"], port=config["server"]["port"], reload=True)
+

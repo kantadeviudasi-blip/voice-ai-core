@@ -13,6 +13,7 @@ pypdf>=4.1.0
 
 # Speech-to-Text & Audio
 numpy>=1.26.0
+onnxruntime>=1.17.0
 
 # Text-to-Speech (Zero-cost Indian & Global Voices)
 edge-tts>=6.1.10

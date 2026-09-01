@@ -3,13 +3,21 @@ import os
 import httpx
 from typing import AsyncGenerator, List, Dict, Any, Optional
 from src.adapters.llm.base import BaseLLM
+from src.core.config import config
+from src.adapters.llm.gemini_llm import GeminiLLM
 
 # Ordered fallback chain — newest/fastest first
+# NOTE: qwen3.x are THINKING/REASONING models — they output internal <think> blocks
+# that leak into TTS. Use NON-THINKING models for voice telecalling.
 GROQ_MODEL_FALLBACK_CHAIN = [
-    "qwen/qwen3.8-27b",            # ✅ Ultra-fast (20ms), superior multilingual & natural Hindi flow
-    "qwen/qwen3.6-27b",            # Multilingual fallback
-    "openai/gpt-oss-120b",         # Heavy reasoning, complex tasks
-    "openai/gpt-oss-20b",          # Fast everyday chat
+    "llama-3.3-70b-versatile",     # ✅ Best quality, natural Hindi/Hinglish, non-thinking
+    "llama-3.1-8b-instant",        # ✅ Ultra-fast fallback, non-thinking
+    "llama-3.2-1b-preview",        # Fallback for free tiers
+    "llama-3.2-3b-preview",
+    "gemma2-9b-it",
+    "mixtral-8x7b-32768",
+    "llama3-70b-8192",             # Secondary fallback
+    "llama3-8b-8192",              # Emergency fallback
 ]
 
 class GroqLLM(BaseLLM):
@@ -21,7 +29,7 @@ class GroqLLM(BaseLLM):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "openai/gpt-oss-20b",   # ✅ Current default: fast everyday Groq model
+        model: str = "llama-3.3-70b-versatile",   # ✅ Non-thinking fast model — no thought leakage
         temperature: float = 0.3,
         max_tokens: int = 150
     ):
@@ -85,11 +93,15 @@ class GroqLLM(BaseLLM):
                     try:
                         chunk = json.loads(data_str)
                         delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        # Discard internal reasoning_content or thinking tags
+                        if "reasoning_content" in delta and not delta.get("content"):
+                            continue
                         content = delta.get("content", "")
                         if content:
                             yield content
                     except json.JSONDecodeError:
                         continue
+
 
     async def generate_stream(
         self,
@@ -120,8 +132,24 @@ class GroqLLM(BaseLLM):
                     continue  # Try next model
 
             # All models failed
-            print(f"[GroqLLM] All models failed. Key: {self.api_key[:12]}...")
-            yield "[Groq unavailable — check API key or try again]"
+            print(f"[GroqLLM] All Groq models failed. Attempting cross-provider fallback to Gemini...")
+            gemini_key = config.llm.gemini.api_key
+            if gemini_key:
+                try:
+                    fallback_llm = GeminiLLM(
+                        api_key=gemini_key, 
+                        model=config.llm.gemini.model,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens
+                    )
+                    async for token in fallback_llm.generate_stream(messages, system_prompt):
+                        yield token
+                    return
+                except Exception as e:
+                    print(f"[GroqLLM] Gemini fallback also failed: {e}")
+                    pass
+            
+            yield "[Service unavailable — check API keys or try again]"
 
     async def generate(self, messages: List[Dict[str, str]], system_prompt: str) -> str:
         collected = []

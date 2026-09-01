@@ -6,7 +6,7 @@ from src.knowledge.prompt_builder import AgentProfile, PromptBuilder
 class TenantStore:
     """
     Multi-tenant Agent Profile Store.
-    Maintains customized voice agent profiles for 100+ businesses.
+    Maintains customized voice agent profiles for Rooftop Solar & PM Surya Ghar Yojana.
     """
     def __init__(self, storage_file: str = "tenants.json"):
         self.storage_file = storage_file
@@ -14,99 +14,88 @@ class TenantStore:
         self._init_defaults()
 
     def _init_defaults(self):
-        # Default Template 1: Real Estate (Sunrise Heights)
-        real_estate_text = """Sunrise Heights Jaipur. Luxury 2 BHK & 3 BHK flats at Jagatpura. 
-Starting price 45 Lakhs. Zero brokerage, RERA approved, 80% loan assistance available. 
-Amenities: Clubhouse, Swimming pool, 24/7 security, lush green gardens. 
-Special Offer: Modular Kitchen free on bookings this weekend."""
-        self.save_profile(PromptBuilder.synthesize_profile(
-            tenant_id="real-estate-demo",
-            company_name="Sunrise Heights",
-            extracted_text=real_estate_text,
-            agent_name="Sneha",
-            language_mode="Hinglish",
-            primary_goal="Check requirement (2BHK vs 3BHK) and book a free site visit for Saturday or Sunday"
-        ))
-
-        # Default Template 2: Healthcare Dental Clinic (Apex Dental)
-        dental_text = """Apex Dental Care, Indiranagar Bangalore. 
-Services: Teeth Cleaning, Root Canal Treatment, Invisible Aligners, Dental Implants. 
-Senior Orthodontists with 15+ years experience. Painless treatment guarantee. 
-Consultation fee: Only Rs. 299 for new patients this week."""
-        self.save_profile(PromptBuilder.synthesize_profile(
-            tenant_id="dental-clinic-demo",
-            company_name="Apex Dental Care",
-            extracted_text=dental_text,
-            agent_name="Pooja",
-            language_mode="Hinglish",
-            primary_goal="Check dental issue and book doctor appointment slot"
-        ))
-
-        # Default Template 3: Solar Company (Apex Solar Solutions, Raipur)
-        solar_text = """Apex Solar Solutions — Chhattisgarh ka No.1 Residential & Commercial Solar Provider.
-Location: VIP Road, Raipur, Chhattisgarh. Contact: 9876543210. Website: www.apexsolarraipur.com.
+        # 1. Primary Profile: Apex Solar Solutions (PM Surya Ghar Muft Bijli Yojana)
+        solar_text_apex = """Apex Solar Solutions — PM Surya Ghar Muft Bijli Yojana Authorized Channel Partner.
+Location: Raipur, Chhattisgarh. Contact: 9876543210.
 Business Hours: Monday to Saturday, 9 AM to 7 PM.
 
-ABOUT THE COMPANY:
-Apex Solar Solutions Chhattisgarh ki leading residential aur commercial solar installation provider hai.
-Hum rooftop solar power system installation, net-metering assistance, aur government subsidy processing mein specialize karte hain.
+ABOUT THE SERVICE:
+Apex Solar Solutions chhaton (rooftop) par solar panel lagane aur PM Surya Ghar Yojana ke tehat government subsidy dilwane ka kaam karti hai.
+Hum free site survey, net-metering setup, aur 0% EMI finance provide karte hain.
 
 PRODUCTS & PRICING:
-1. 3 kW On-Grid Solar System:
-   - Price: Rs. 1,80,000 (before subsidy).
-   - Government Subsidy: Up to Rs. 78,000 under PM Surya Ghar Muft Bijli Yojana.
+1. 3 kW On-Grid Rooftop Solar System:
+   - Kul Kharcha (Before Subsidy): Rs. 1,80,000.
+   - Government Subsidy (PM Surya Ghar): Flat Rs. 78,000 direct bank account mein.
    - Effective Price after Subsidy: Only Rs. 1,02,000.
-   - Ideal for 2-3 BHK homes. Comfortably runs 2 ACs, Refrigerator, Fans, and all Lights.
-   - Monthly electricity savings: Approx 350 to 400 units (Rs. 3,000 to Rs. 3,500 per month).
+   - Ideal for 2 to 4 room houses. Runs 2 ACs, Refrigerator, Washing Machine, Fans, and Lights.
+   - Monthly electricity savings: Approx 350 to 400 units (Rs. 3,000 to Rs. 4,000 per month savings). Bill almost ZERO ho jaata hai.
 
 2. 5 kW On-Grid Solar System:
-   - Price: Rs. 2,80,000 (before subsidy). Flat subsidy: Rs. 78,000.
-   - Ideal for large homes and small offices.
+   - Total Price: Rs. 2,80,000 (before subsidy).
+   - Government Subsidy: Flat Rs. 78,000.
+   - Ideal for large homes, bungalows, and small shops.
 
-KEY FEATURES & WARRANTIES:
-- Solar Panel Warranty: 25 Years performance warranty.
-- Inverter Warranty: 5 Years replacement warranty.
-- Installation Time: Completed within 7 to 10 working days.
-- Free Site Survey: 100% free site inspection before installation — no hidden charges.
+WARRANTY & INSTALLATION:
+- Solar Panels Warranty: 25 Years Performance Warranty.
+- Inverter Warranty: 5 Years Replacement Warranty.
+- Installation Time: 7 to 10 working days.
+- Free Site Feasibility Survey: 100% Free technical rooftop survey across city.
 
-PAYMENT & FINANCE OPTIONS:
-- 0% Interest EMI available via Bajaj Finserv and HDFC Bank.
-- Only 20% advance booking amount required. Remaining 80% only after installation and net-metering setup.
+FINANCE & EMI:
+- 0% Interest EMI available (Bajaj Finserv & HDFC Bank).
+- Monthly EMI starting at only Rs. 2,500/month. Jo bijli ka bill bachta hai, usi se EMI nikal aati hai.
+
+ROOFTOP SPACE REQUIRED:
+- 3 kW solar ke liye lagbhag 300 square feet chhat ki jagah chahiye hoti hai jahan dhoop aati ho.
+- 5 kW ke liye lagbhag 500 square feet jagah chahiye.
 
 FAQS:
-Q: Maintenance kitni hoti hai?
-A: Bahut kam maintenance hoti hai. Panels ko sirf regular paani se 15 din mein ek baar saaf karna hota hai.
+Q: Subsidy kaise milti hai?
+A: PM Surya Ghar portal par registration aur net-metering lagne ke 30 din ke andar 78,000 rupaye sidhe customer ke bank account mein aate hain.
 
-Q: Government subsidy kab milti hai?
-A: Subsidy directly customer ke bank account mein credit hoti hai net-metering install hone ke 30 to 45 din ke andar.
+Q: Maintenance kitna hota hai?
+A: Koi khaas maintenance nahi, bas 15 din mein ek baar sadharan paani se panels ko dho lijiye.
 
-LEAD QUALIFICATION QUESTIONS TO ASK:
-- Aapka ghar kitne BHK ka hai?
-- Monthly bijli bill kitna aata hai approximately?
-- Kya aap Raipur mein hi hain?
-- Key goal: Free site survey book karna — collect Name, Address, and preferred callback time slot."""
+LEAD QUALIFICATION FLOW:
+1. Check bijli bill: Monthly bill lagbhag kitna aata hai?
+2. Check roof space: Ghar ki chhat apni hai ya rented?
+3. Book Free Site Survey: Customer ka naam, address aur survey ka time confirm karna."""
 
-        apex_solar_profile = PromptBuilder.synthesize_profile(
-            tenant_id="apex-solar-raipur",
+        apex_profile = PromptBuilder.synthesize_profile(
+            tenant_id="apex-solar-solutions",
             company_name="Apex Solar Solutions",
-            extracted_text=solar_text,
-            agent_name="Sneha",
-            language_mode="Hinglish",
-            primary_goal="Customer ka free site survey book karna. Pehle subsidy ka faayda batao, phir ghar ki details poocho (BHK, bijli bill), aur finally naam, address, aur callback time collect karo."
+            extracted_text=solar_text_apex,
+            agent_name="स्नेहा",
+            language_mode="Hindi",
+            primary_goal="ग्राहक को पीएम सूर्य घर योजना की 78,000 रुपये सब्सिडी समझाना, मासिक बिजली बिल पूछना और फ्री साइट सर्वे बुक करना।"
         )
-        # Override the generic greeting with a conversion-optimised outbound hook
-        apex_solar_profile.greeting = (
-            "Namaste! Main Sneha bol rahi hoon, Apex Solar Solutions Raipur se. "
-            "Sir, aapko pata hai government abhi 78 hazar rupaye ki subsidy de rahi hai solar lagwane par? "
-            "Kya aap iske baare mein jaanna chahenge?"
+        apex_profile.greeting = "नमस्ते सर! मैं अपेक्स सोलर से स्नेहा बोल रही हूँ। सर, पीएम सूर्य घर योजना के तहत 78,000 रुपये तक की सरकारी सब्सिडी मिल रही है। क्या आपका बिजली बिल ज्यादा आता है सर?"
+        self.save_profile(apex_profile)
+
+        # 2. Secondary Profile: GreenTech Solar Solutions
+        solar_text_greentech = """GreenTech Solar Solutions India.
+Authorized Solar EPC installer under PM Surya Ghar Muft Bijli Yojana.
+Offering 3kW and 5kW Tier-1 Mono PERC Solar Panels with 25 Years Warranty.
+Zero Investment Rooftop Solar with Easy EMI and Rs. 78,000 Direct DBT Subsidy."""
+        
+        greentech_profile = PromptBuilder.synthesize_profile(
+            tenant_id="greentech-solar",
+            company_name="GreenTech Solar",
+            extracted_text=solar_text_greentech,
+            agent_name="स्नेहा",
+            language_mode="Hindi",
+            primary_goal="पीएम सूर्य घर मुफ्त बिजली योजना के तहत 78,000 सब्सिडी की जानकारी देना और फ्री रूफटॉप इंस्पेक्शन शेड्यूल करना।"
         )
-        self.save_profile(apex_solar_profile)
+        greentech_profile.greeting = "नमस्ते सर! मैं ग्रीनटेक सोलर से स्नेहा बात कर रही हूँ। क्या आप अपनी छत पर सोलर लगवाकर बिजली बिल जीरो करना चाहते हैं सर?"
+        self.save_profile(greentech_profile)
 
     def save_profile(self, profile: AgentProfile):
         self.profiles[profile.tenant_id] = profile
 
     def get_profile(self, tenant_id: str) -> Optional[AgentProfile]:
-        return self.profiles.get(tenant_id) or self.profiles.get("real-estate-demo")
+        return self.profiles.get(tenant_id) or self.profiles.get("apex-solar-solutions")
 
     def list_tenants(self) -> Dict[str, str]:
         return {tid: p.company_name for tid, p in self.profiles.items()}
+

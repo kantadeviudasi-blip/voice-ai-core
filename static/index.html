@@ -40,8 +40,8 @@
         .metric-label { font-size: 11px; color: #8b949e; margin-top: 4px; }
         .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #8b949e; margin-right: 6px; }
         .status-active { background: #2ea043; box-shadow: 0 0 8px #2ea043; }
-        .audio-wave { display: flex; align-items: center; justify-content: center; gap: 4px; height: 30px; margin-bottom: 10px; }
-        .bar { width: 4px; height: 6px; background: #58a6ff; border-radius: 2px; transition: height 0.1s; }
+        .audio-wave { display: flex; align-items: center; justify-content: center; gap: 5px; height: 36px; margin-bottom: 12px; background: #0d1117; border-radius: 6px; border: 1px solid var(--border); }
+        .bar { width: 4px; height: 6px; background: #58a6ff; border-radius: 2px; transition: height 0.08s ease; }
     </style>
 </head>
 <body>
@@ -61,32 +61,34 @@
             <!-- Left: Controls -->
             <div class="card">
                 <h3 style="margin-bottom: 12px; color: #fff;">1. Call Configuration</h3>
-                <label>Select Active Client Tenant:</label>
+                <label>Select Active Solar Telecaller:</label>
                 <select id="tenantSelect">
-                    <option value="apex-solar-raipur">☀️ Apex Solar Solutions (Raipur)</option>
-                    <option value="real-estate-demo">Sunrise Heights (Real Estate)</option>
-                    <option value="dental-clinic-demo">Apex Dental Care (Clinic)</option>
+                    <option value="apex-solar-solutions">☀️ Apex Solar Solutions (PM Surya Ghar Yojana)</option>
+                    <option value="greentech-solar">🌱 GreenTech Solar India (Rooftop Solar)</option>
                 </select>
 
-                <div class="audio-wave" id="waveBox">
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                <div class="audio-wave" id="waveBox" title="Microphone Level Visualizer">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
-                    <button id="startCallBtn" class="success" onclick="startCall()">📞 Start Call</button>
+                    <button id="startCallBtn" class="success" onclick="startCall()">📞 Start Call (Mic On)</button>
                     <button id="endCallBtn" class="danger" onclick="endCall()" disabled>🔴 End Call</button>
                 </div>
 
                 <button id="bargeInBtn" style="margin-top: 10px; background: var(--accent-orange); color: #000;" onclick="triggerBargeIn()">⚡ Barge-in (Interrupt AI Voice)</button>
 
-                <h3 style="margin-top: 20px; margin-bottom: 8px; color: #fff;">💬 Quick Hindi / Hinglish Test Prompts:</h3>
+                <h3 style="margin-top: 20px; margin-bottom: 8px; color: #fff;">💬 Quick Hindi Solar Test Prompts:</h3>
                 <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
-                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Solar lagwane mein kitna kharcha aayega?')">💰 Solar kharcha?</button>
-                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('78,000 ki subsidy kaise milegi?')">📜 Subsidy details?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('78,000 ki subsidy kaise milegi?')">📜 78,000 Subsidy details?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('3 kW solar lagwane mein kitna kharcha aayega?')">💰 3kW Solar kharcha?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Chhat par kitni jagah chahiye solar lagane ke liye?')">🏠 Chhat par space?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Mera bijli ka bill kitna kam ho jaayega?')">⚡ Bill zero kaise hoga?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Kya 0% interest EMI option available hai?')">💳 0% EMI option?</button>
+                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('WhatsApp par quotation bhej dijiye.')">📱 WhatsApp par bhejo</button>
                     <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Main abhi busy hoon, kal subah 11 baje call karo.')">⏰ Abhi busy hoon</button>
-                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('WhatsApp par details bhej dijiye.')">📱 WhatsApp par bhejo</button>
-                    <button style="padding: 6px 10px; font-size: 12px; width: auto; background: #21262d; color: #58a6ff; border: 1px solid #30363d;" onclick="sendQuickPrompt('Kya mere 2 BHK flat ke liye solar theek rahega?')">🏢 Flat / Space query</button>
                 </div>
+
 
                 <div style="display: flex; gap: 8px; margin-top: 4px;">
                     <input type="text" id="textPromptInput" placeholder="Type Hindi/Hinglish message (e.g. Subsidy batao)..." style="margin-bottom: 0;" onkeydown="if(event.key==='Enter') sendTextInput()">
@@ -133,42 +135,44 @@
         let ws = null;
         let audioContext = null;
         let audioInput = null;
-        let micWorkletNode = null;
+        let scriptProcessor = null;
+        let activeAudioSources = [];
+        let scheduledAudioEndTime = 0;
 
-        // AudioWorklet processor code — inlined as a Blob to avoid needing a separate file.
-        const WORKLET_CODE = `
-        class PCMCaptureProcessor extends AudioWorkletProcessor {
-            process(inputs) {
-                const channel = inputs[0]?.[0];
-                if (channel && channel.length > 0) {
-                    const pcm = new Int16Array(channel.length);
-                    for (let i = 0; i < channel.length; i++) {
-                        pcm[i] = Math.max(-1, Math.min(1, channel[i])) * 32767;
-                    }
-                    this.port.postMessage(pcm.buffer, [pcm.buffer]);
-                }
-                return true;
-            }
-        }
-        registerProcessor('pcm-capture-processor', PCMCaptureProcessor);
-        `;
-        const workletBlobUrl = URL.createObjectURL(new Blob([WORKLET_CODE], { type: 'application/javascript' }));
+        // Default tenants always present so Select is never empty
+        const DEFAULT_TENANTS = {
+            "apex-solar-solutions": "☀️ Apex Solar Solutions (PM Surya Ghar Yojana)",
+            "greentech-solar": "🌱 GreenTech Solar India (Rooftop Solar)"
+        };
 
         async function loadTenants() {
+            const select = document.getElementById('tenantSelect');
+            // Always seed defaults first so Select is never empty
+            select.innerHTML = '';
+            for (const [id, label] of Object.entries(DEFAULT_TENANTS)) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = label;
+                select.appendChild(opt);
+            }
+            // Then append any dynamically onboarded tenants from server
             try {
                 const res = await fetch('/api/config');
+                if (!res.ok) return;
                 const data = await res.json();
-                const select = document.getElementById('tenantSelect');
-                select.innerHTML = '';
-                for (const [id, name] of Object.entries(data.tenants)) {
-                    const opt = document.createElement('option');
-                    opt.value = id;
-                    opt.textContent = `${name} (${id})`;
-                    select.appendChild(opt);
+                if (data.tenants && typeof data.tenants === 'object') {
+                    for (const [id, name] of Object.entries(data.tenants)) {
+                        if (DEFAULT_TENANTS[id]) continue; // skip duplicates
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.textContent = `${name} (${id})`;
+                        select.appendChild(opt);
+                    }
                 }
-            } catch (e) {}
+            } catch (e) { /* server may not be ready yet — defaults still shown */ }
         }
         loadTenants();
+
 
         function log(type, text) {
             const box = document.getElementById('transcriptBox');
@@ -192,7 +196,7 @@
                 document.getElementById('conn-status').innerText = 'Call Live';
                 document.getElementById('startCallBtn').disabled = true;
                 document.getElementById('endCallBtn').disabled = false;
-                log('sys', '[Call Connected] Initializing microphone audio stream...');
+                log('sys', '[Call Connected] Starting live microphone audio stream...');
                 await setupMicrophone();
             };
 
@@ -206,7 +210,7 @@
                         document.getElementById('m-ttft').innerText = (msg.data.ttft_ms || 0) + ' ms';
                         document.getElementById('m-tts').innerText = (msg.data.tts_latency_ms || 0) + ' ms';
                         document.getElementById('m-total').innerText = (msg.data.total_latency_ms || 0) + ' ms';
-                    } else if (msg.event === 'barge_in_interrupted') {
+                    } else if (msg.event === 'barge_in_interrupted' || msg.event === 'clear_buffer') {
                         resetAudioQueue();
                         log('sys', '⚡ [Barge-In] Interrupted AI playback.');
                     }
@@ -220,29 +224,99 @@
             };
         }
 
+        function updateWaveBars(volume) {
+            const bars = document.querySelectorAll('.bar');
+            bars.forEach((bar, i) => {
+                const height = Math.min(32, Math.max(6, (volume * 150) * (1 + (i % 3) * 0.4)));
+                bar.style.height = `${height}px`;
+            });
+        }
+
+        // Resample input float32 array to 16kHz Int16 PCM
+        function downsampleTo16k(inputBuffer, inputSampleRate) {
+            if (inputSampleRate === 16000) {
+                const pcm = new Int16Array(inputBuffer.length);
+                for (let i = 0; i < inputBuffer.length; i++) {
+                    pcm[i] = Math.max(-1, Math.min(1, inputBuffer[i])) * 32767;
+                }
+                return pcm.buffer;
+            }
+            const ratio = inputSampleRate / 16000;
+            const newLength = Math.round(inputBuffer.length / ratio);
+            const pcm = new Int16Array(newLength);
+            for (let i = 0; i < newLength; i++) {
+                const origIndex = Math.floor(i * ratio);
+                pcm[i] = Math.max(-1, Math.min(1, inputBuffer[origIndex])) * 32767;
+            }
+            return pcm.buffer;
+        }
+
         async function setupMicrophone() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
 
-                await audioContext.audioWorklet.addModule(workletBlobUrl);
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
 
                 audioInput = audioContext.createMediaStreamSource(stream);
-                micWorkletNode = new AudioWorkletNode(audioContext, 'pcm-capture-processor');
+                // Use ScriptProcessorNode for standard cross-browser 16kHz downsampling
+                scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
 
-                micWorkletNode.port.onmessage = (e) => {
+                let speechFramesWhileAgentPlaying = 0;
+
+                scriptProcessor.onaudioprocess = (e) => {
                     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-                    ws.send(e.data);
+                    const inputData = e.inputBuffer.getChannelData(0);
+
+                    // Compute volume for live visualizer
+                    let sum = 0;
+                    for (let i = 0; i < inputData.length; i++) {
+                        sum += inputData[i] * inputData[i];
+                    }
+                    const rms = Math.sqrt(sum / inputData.length);
+                    updateWaveBars(rms);
+
+                    // Client-Side Instant Zero-Lag Barge-in Trigger:
+                    // If AI audio is playing and user speaks into mic (RMS > 0.02), kill playback immediately
+                    if (activeAudioSources.length > 0 && rms > 0.02) {
+                        speechFramesWhileAgentPlaying++;
+                        if (speechFramesWhileAgentPlaying >= 2) {
+                            resetAudioQueue();
+                            ws.send(JSON.stringify({ action: 'interrupt' }));
+                            speechFramesWhileAgentPlaying = 0;
+                        }
+                    } else {
+                        speechFramesWhileAgentPlaying = 0;
+                    }
+
+                    // Downsample to 16kHz PCM and send over WebSocket
+                    const pcmBuffer = downsampleTo16k(inputData, audioContext.sampleRate);
+                    ws.send(pcmBuffer);
                 };
 
-                audioInput.connect(micWorkletNode);
+                audioInput.connect(scriptProcessor);
+                // Zero-gain node ensures onaudioprocess fires without leaking mic audio back into computer speakers
+                const muteNode = audioContext.createGain();
+                muteNode.gain.value = 0;
+                scriptProcessor.connect(muteNode);
+                muteNode.connect(audioContext.destination);
+                log('sys', '[Mic Active] Speak naturally in Hindi/Hinglish!');
             } catch (err) {
-                log('sys', '[Audio Notice] Microphone not active or permission denied: ' + err.message + ' (You can still test via text input)');
+                log('sys', '[Mic Notice] ' + err.message + ' (You can also test using the Hindi buttons or text prompt below)');
             }
         }
 
-        // Sequential audio queue — schedules each sentence buffer to play after the previous one ends
-        let audioPlaybackTime = 0;
 
         function playAudioBytes(arrayBuffer) {
             if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -253,21 +327,31 @@
                 source.buffer = buffer;
                 source.connect(audioContext.destination);
 
-                const startAt = Math.max(audioContext.currentTime, audioPlaybackTime);
-                source.start(startAt);
-                audioPlaybackTime = startAt + buffer.duration;
+                const now = audioContext.currentTime;
+                const startTime = Math.max(now, scheduledAudioEndTime);
+                source.start(startTime);
+                scheduledAudioEndTime = startTime + buffer.duration;
+
+                activeAudioSources.push(source);
+                source.onended = () => {
+                    activeAudioSources = activeAudioSources.filter(s => s !== source);
+                };
             }, (err) => {
-                console.warn('[Audio] decodeAudioData note:', err);
+                console.warn('[Audio Playback Note]', err);
             });
         }
 
         function resetAudioQueue() {
-            audioPlaybackTime = 0;
-            if (audioContext) {
+            // Stop all currently playing audio sources immediately
+            activeAudioSources.forEach(source => {
                 try {
-                    audioContext.close();
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    source.stop(0);
+                    source.disconnect();
                 } catch(e) {}
+            });
+            activeAudioSources = [];
+            if (audioContext) {
+                scheduledAudioEndTime = audioContext.currentTime;
             }
         }
 
@@ -290,7 +374,7 @@
             if (!text) return;
 
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-                // Auto-start call if not already active
+                // Auto-start call if not active
                 startCall().then(() => {
                     setTimeout(() => {
                         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -307,9 +391,20 @@
         }
 
         function endCall() {
-            if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
-            if (ws) { ws.close(); ws = null; }
-            if (audioContext) { audioContext.close(); audioContext = null; }
+            if (scriptProcessor) {
+                try { scriptProcessor.disconnect(); } catch(e) {}
+                scriptProcessor = null;
+            }
+            if (audioInput) {
+                try { audioInput.disconnect(); } catch(e) {}
+                audioInput = null;
+            }
+            resetAudioQueue();
+            if (ws) {
+                try { ws.close(); } catch(e) {}
+                ws = null;
+            }
+            updateWaveBars(0);
             document.getElementById('conn-dot').className = 'status-indicator';
             document.getElementById('conn-status').innerText = 'Disconnected';
             document.getElementById('startCallBtn').disabled = false;
@@ -339,3 +434,4 @@
     </script>
 </body>
 </html>
+

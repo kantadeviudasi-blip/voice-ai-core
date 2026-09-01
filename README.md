@@ -5,13 +5,13 @@ High-concurrency, ultra-low latency, and cost-optimized Voice Calling AI Agent p
 ---
 
 ## ⚡ Key Highlights
-- **Sub-Second Latency**: ~500ms – 700ms end-to-end response time.
-- **Ultra-Low Operating Cost**: Strictly **₹0.94 – ₹1.12 per call minute** (Telephony + STT + LLM + TTS + Server).
-- **80%+ Gross Margin**: Billed to clients at ₹3.50 – ₹4.00/min or ₹8,000 – ₹10,000/month retainers.
+- **Sub-Second Latency**: ~400ms – 500ms end-to-end response time.
+- **Ultra-Low Operating Cost**: Strictly **< ₹0.55 per call minute** (Direct SIP + Groq Whisper + Groq LPU + EdgeTTS + Server).
+- **85%+ Gross Margin**: Billed to clients at ₹3.50 – ₹4.00/min or retainers.
 - **Hinglish & Vernacular Support**: Code-mixing, Indian accents, and local dialect understanding.
 - **Dynamic Instant Onboarding**: Upload any company PDF/profile text $\rightarrow$ Instantly generates a customized telecaller persona, objection handling matrix, and greetings.
 - **Hot-Swappable Model Adapters**: Switch STT, LLM, and TTS models on the fly via `config.yaml` or API.
-- **Telephony Bridges Included**: Out-of-the-box WebSocket support for **Exotel**, **Plivo**, **Twilio**, and Browser WebRTC.
+- **Telephony Bridges Included**: Direct WebSocket support for **FreeSWITCH / Asterisk SIP Trunking**, **Exotel**, **Plivo**, and Browser WebRTC.
 
 ---
 
@@ -19,11 +19,11 @@ High-concurrency, ultra-low latency, and cost-optimized Voice Calling AI Agent p
 
 | Layer | Recommended Provider | Cost (INR / Min) | Key Advantage |
 | :--- | :--- | :--- | :--- |
-| **STT** | **Deepgram Nova-2** | ₹0.36 | High accuracy with Hinglish & Indian accents (~150ms) |
-| **LLM** | **Groq (Llama 3.3 70B)** / **Gemini 2.0 Flash** | ₹0.10 | ~300 tokens/sec & sub-120ms TTFT |
-| **TTS** | **EdgeTTS** / **Sarvam AI (Bulbul)** | ₹0.00 – ₹0.18 | Zero-cost or authentic Indian regional voices |
-| **Telephony** | **Exotel** / **Plivo** / **SIP** | ₹0.42 | Indian compliance, DND filtering, CLI routing |
-| **VAD** | **Silero VAD / Frame-by-Frame Energy** | Free | Instant Barge-In (Interruption handling) |
+| **STT** | **Groq Whisper Large v3 Turbo** / **Faster-Whisper** | ₹0.05 – ₹0.08 | High accuracy with Hinglish & Indian accents (~120ms) |
+| **LLM** | **Groq (Qwen / Llama 3.3 70B)** | ₹0.10 | ~300-750 tokens/sec & sub-120ms TTFT |
+| **TTS** | **EdgeTTS (hi-IN-SwaraNeural)** | ₹0.00 (Zero-Cost) | Authentic natural Indian telecaller female voice |
+| **Telephony** | **Direct SIP (FreeSWITCH / Asterisk)** | ₹0.35 | Direct carrier routing without aggregator markups |
+| **VAD** | **Adaptive Frame-by-Frame Energy VAD** | Free | Instant Barge-In (Interruption handling) + Noise Immunity |
 
 ---
 
@@ -35,20 +35,11 @@ cd voice-ai-core
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables (Optional for Cloud APIs)
+### 2. Configure Environment Variables
 ```bash
-# STT
-export DEEPGRAM_API_KEY="your_deepgram_key"
-
-# LLM
 export GROQ_API_KEY="your_groq_key"
-export GEMINI_API_KEY="your_gemini_key"
-export DEEPSEEK_API_KEY="your_deepseek_key"
-
-# TTS
-export SARVAM_API_KEY="your_sarvam_key"
 ```
-*(Note: If no API keys are supplied, the platform automatically runs in Mock / EdgeTTS mode so you can test immediately.)*
+*(Note: If no API keys are supplied, the platform automatically runs in Mock mode so you can test immediately.)*
 
 ### 3. Start the Voice Engine & Web Console
 ```bash
@@ -70,23 +61,11 @@ curl -X POST http://localhost:8000/api/tenant/onboard \
   -F "document_text=We install 3kW and 5kW rooftop solar panels in Jaipur with 40% government subsidy. Free site survey available."
 ```
 
-Returns:
-```json
-{
-  "success": true,
-  "tenant_id": "apex-solar-solutions-3a8f1b",
-  "agent_name": "Sneha",
-  "greeting": "Namaste! Main Apex Solar Solutions se Sneha baat kar rahi hoon...",
-  "primary_goal": "Qualify customer interest and schedule a follow-up or appointment",
-  "test_url": "/test?tenant=apex-solar-solutions-3a8f1b"
-}
-```
-
 ---
 
 ## 📞 Telephony WebSocket Endpoints
 
+- **Direct SIP Stream (FreeSWITCH/Asterisk)**: `ws://<your-server>:8000/ws/sip/{tenant_id}`
 - **Exotel Stream**: `ws://<your-server>:8000/ws/exotel/{tenant_id}`
 - **Plivo Stream**: `ws://<your-server>:8000/ws/plivo/{tenant_id}`
-- **Twilio Stream**: `ws://<your-server>:8000/ws/twilio/{tenant_id}`
 - **Universal / Browser Stream**: `ws://<your-server>:8000/ws/audio/{tenant_id}`

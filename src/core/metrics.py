@@ -56,13 +56,13 @@ class CostEstimator:
     Calculates exact running cost per call minute based on active providers.
     """
     RATES = {
-        "telephony": 0.42,          # ₹0.42 / min
-        "stt_deepgram": 0.36,       # ₹0.36 / min
-        "stt_whisper": 0.05,        # Server cost share
+        "telephony": 0.35,          # Direct SIP trunking (~₹0.35 / min)
+        "stt_groq": 0.08,           # Groq Whisper LPU (~₹0.08 / min)
+        "stt_whisper": 0.05,        # Self-Hosted Faster-Whisper Server cost share (~₹0.05 / min)
         "llm_groq": 0.10,           # ~₹0.10 / min
         "llm_gemini_flash": 0.08,   # ~₹0.08 / min
         "llm_deepseek": 0.09,       # ~₹0.09 / min
-        "tts_edgetts": 0.00,        # Zero cost
+        "tts_edgetts": 0.00,        # Zero cost (100% Free)
         "tts_sarvam": 0.18,         # ₹0.18 / min
         "tts_cartesia": 0.25,       # ₹0.25 / min
         "server": 0.04              # Ingress / WebSocket node
@@ -70,7 +70,7 @@ class CostEstimator:
 
     @classmethod
     def estimate_minute_cost(cls, stt_provider: str, llm_provider: str, tts_provider: str) -> float:
-        stt_cost = cls.RATES.get(f"stt_{stt_provider}", 0.36)
+        stt_cost = cls.RATES.get(f"stt_{stt_provider}", 0.08)
         llm_cost = cls.RATES.get(f"llm_{llm_provider}", 0.10)
         tts_cost = cls.RATES.get(f"tts_{tts_provider}", 0.00)
         telephony_cost = cls.RATES["telephony"]
