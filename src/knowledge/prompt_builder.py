@@ -4,17 +4,19 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
-# STEP 1 — EdgeTTS Human-Prosody Prompt Engineering Rules
+# STEP 1 — Voice Generation Human-Prosody Prompt Engineering Rules
 # ---------------------------------------------------------------------------
-# EdgeTTS's vocal cadence is ~80% dependent on HOW text is structured.
-# Commas, ellipses, and natural fillers inject micro-pauses and inflection
-# that transform a monotonic news-reader voice into a human conversational tone.
-# These rules are appended to every system prompt so the LLM always outputs
-# voice-optimised text regardless of agent persona or topic.
+# The TTS vocal cadence is ~80% dependent on HOW text is structured.
+# Clean, conversational prompt shaping prevents "robotic reading".
+# 
+# Punctuation drives pacing:
+# Commas (,) add a micro-pause.
+# Periods (.) and Exclamation Marks (!) add a breath pause.
+# Question marks (?) raise pitch naturally at the end of a sentence.
 # ---------------------------------------------------------------------------
-EDGETTS_HUMAN_PROMPT = """
+TTS_HUMAN_PROMPT = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎙️ STRICT VOICE FORMATTING RULES (EdgeTTS Human Prosody)
+🎙️ STRICT VOICE FORMATTING RULES (TTS Human Prosody)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. Sentences chote aur simple rakhein — Maximum 10-15 words per sentence.
 2. Bullet points (*, -), numbers (1. 2. 3.), bold (**), ya koi bhi symbol BILKUL mat likhein.
@@ -164,7 +166,5 @@ OBJECTIONS HANDLING CHEAT SHEET:
             knowledge_summary=extracted_text[:500],
             objection_matrix=objections,
             qualification_criteria=["Monthly Bill", "Roof Ownership", "Callback Time Slot"],
-            # Step 1 of 3-Step Human-Tone Fix: EDGETTS_HUMAN_PROMPT appended to every profile
-            system_prompt=(system_prompt.strip() + "\n" + EDGETTS_HUMAN_PROMPT.strip())
+            system_prompt=(system_prompt.strip() + "\n" + TTS_HUMAN_PROMPT.strip())
         )
-

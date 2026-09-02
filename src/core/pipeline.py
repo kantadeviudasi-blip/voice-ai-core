@@ -130,16 +130,35 @@ class VoicePipeline:
         
         # Check if STT supports streaming
         self.using_streaming_stt = getattr(self.stt, 'is_streaming_supported', False)
-
+        # Check if TTS uses event-based streaming
+        self.using_streaming_tts = getattr(self.tts, 'connect_stream', None) is not None
+        self._tts_first_chunk_received = False
     async def start(self):
-        """Initializes streaming STT connection if supported."""
+        """Initializes streaming STT and TTS connections if supported."""
         if self.using_streaming_stt:
             await self.stt.connect_stream(self._on_realtime_transcript)
+        if self.using_streaming_tts:
+            await self.tts.connect_stream(self._on_tts_audio_chunk)
 
     def _on_realtime_transcript(self, transcript: str, is_final: bool):
         """Callback for real-time STT streaming (e.g. Deepgram)."""
         if is_final and transcript.strip():
-            asyncio.create_task(self._locked_speech_end_streaming(transcript.strip()))
+            words = transcript.strip().split()
+            if len(words) >= 2:
+                asyncio.create_task(self._locked_speech_end_streaming(transcript.strip()))
+            else:
+                logger.info(f"Skipping short background noise transcript: {transcript}")
+
+    def _on_tts_audio_chunk(self, chunk: bytes):
+        """Callback for real-time TTS streaming (e.g. Deepgram)."""
+        if self.session.state == SessionState.SPEAKING:
+            if not self._tts_first_chunk_received:
+                self.latency_tracker.mark_tts_first_audio()
+                self._tts_first_chunk_received = True
+            try:
+                self.audio_output_queue.put_nowait(chunk)
+            except asyncio.QueueFull:
+                pass
 
     def set_callbacks(
         self,
@@ -300,6 +319,7 @@ class VoicePipeline:
 
     async def _run_llm_and_tts(self, user_transcript: str):
         try:
+            self._tts_first_chunk_received = False
             self._emit_event("transcript", {"role": "user", "text": user_transcript})
 
             # 2. LLM Streaming
@@ -439,17 +459,20 @@ class VoicePipeline:
         self.session.state = SessionState.SPEAKING
         self._ensure_audio_worker()
 
-        # Collect all audio chunks for this sentence to preserve valid MP3/audio container structure
-        sentence_buffer = bytearray()
-        first_chunk = True
-        async for audio_chunk in self.tts.synthesize_stream(cleaned):
-            if first_chunk:
-                self.latency_tracker.mark_tts_first_audio()
-                first_chunk = False
-            sentence_buffer.extend(audio_chunk)
+        if self.using_streaming_tts:
+            await self.tts.synthesize_stream(cleaned)
+        else:
+            # Collect all audio chunks for this sentence to preserve valid MP3/audio container structure
+            sentence_buffer = bytearray()
+            first_chunk = True
+            async for audio_chunk in self.tts.synthesize_stream(cleaned):
+                if first_chunk:
+                    self.latency_tracker.mark_tts_first_audio()
+                    first_chunk = False
+                sentence_buffer.extend(audio_chunk)
 
-        if sentence_buffer:
-            await self.audio_output_queue.put(bytes(sentence_buffer))
+            if sentence_buffer:
+                await self.audio_output_queue.put(bytes(sentence_buffer))
 
 
     def process_incoming_audio(self, pcm_chunk: bytes):

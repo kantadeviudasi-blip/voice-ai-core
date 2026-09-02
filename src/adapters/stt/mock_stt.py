@@ -1,25 +1,32 @@
-import asyncio
-from typing import Callable
+from typing import Callable, Optional
 from src.adapters.stt.base import BaseSTT
 
 class MockSTT(BaseSTT):
     """
-    Mock STT Adapter for local development, sandbox testing, and latency benchmarking.
+    Mock STT Adapter for unit tests and local development without API keys.
     """
-    def __init__(self, language: str = "hi-IN", sample_rate: int = 16000, simulated_text: str = "Haan main property dekhna chahta hoon."):
+    def __init__(
+        self,
+        simulated_text: str = "Kya aap CRM demo provide karte hain?",
+        language: str = "hi",
+        sample_rate: int = 16000
+    ):
         super().__init__(language=language, sample_rate=sample_rate)
         self.simulated_text = simulated_text
+        self.on_transcript_callback: Optional[Callable[[str, bool], None]] = None
+        self.is_connected = False
 
     async def transcribe(self, audio_data: bytes) -> str:
-        # Simulate network & inference latency ~80ms
-        await asyncio.sleep(0.08)
         return self.simulated_text
 
     async def connect_stream(self, on_transcript_callback: Callable[[str, bool], None]):
-        pass
+        self.on_transcript_callback = on_transcript_callback
+        self.is_connected = True
 
     async def push_audio(self, chunk: bytes):
-        pass
+        # When audio chunk is received in stream mode, trigger the callback
+        if self.on_transcript_callback and self.simulated_text:
+            self.on_transcript_callback(self.simulated_text, True)
 
     async def close(self):
-        pass
+        self.is_connected = False

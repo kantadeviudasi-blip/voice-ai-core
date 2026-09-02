@@ -16,7 +16,7 @@ class DeepgramSTT(BaseSTT):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "nova-2",
+        model: str = "nova-3",
         language: str = "hi",
         sample_rate: int = 16000
     ):
@@ -54,7 +54,7 @@ class DeepgramSTT(BaseSTT):
             f"wss://api.deepgram.com/v1/listen?"
             f"model={self.model}&language={self.language}&"
             f"encoding=linear16&sample_rate={self.sample_rate}&"
-            f"endpointing=300&smart_format=true"
+            f"endpointing=500&utterance_end_ms=1000&smart_format=true"
         )
         
         headers = {
@@ -63,7 +63,7 @@ class DeepgramSTT(BaseSTT):
 
         try:
             self._is_closing = False
-            self.ws_connection = await websockets.connect(url, extra_headers=headers)
+            self.ws_connection = await websockets.connect(url, additional_headers=headers)
             self._receive_task = asyncio.create_task(self._receive_loop())
             logger.info("[DeepgramSTT] Connected to streaming WebSocket.")
         except Exception as e:

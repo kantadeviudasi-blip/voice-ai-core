@@ -1,75 +1,44 @@
 # Voice AI Platform Configuration
-# Lean Self-Hosted & Low-Cost Pipeline (Optimized for Indian Telecalling < ₹0.75/min)
+# Lean Self-Hosted & Low-Cost Pipeline
 
 server:
   host: "0.0.0.0"
   port: 8000
   log_level: "info"
 
-# Default Model Selection
 pipeline:
-  default_stt: "deepgram"    # Now using Deepgram Streaming STT for ultra-low latency
-  default_llm: "gemini"      # Changed to Gemini as requested
-  default_tts: "edgetts"     # EdgeTTS Zero-Cost High Natural SwaraNeural
+  default_stt: "deepgram"
+  default_llm: "gemini"
+  default_tts: "deepgram"
 
-# Speech-To-Text (STT) Settings
 stt:
   deepgram:
     api_key: "${DEEPGRAM_API_KEY}"
-    model: "nova-2"
+    model: "nova-3"
     language: "hi"
-  groq:
-    api_key: "${GROQ_API_KEY}"
-    model: "whisper-large-v3-turbo"   # ✅ Fast & robust on Groq LPUs (~120ms)
-    language: "hi"                   # Fixed Hindi / Hinglish code-switching
-    prompt: "नमस्ते, हाँ जी, solar panel, subsidy, 3kW, cost, bijli bill, EMI, WhatsApp, rooftop solar, survey, Sneha, telecaller."
 
-# LLM Brain Settings
 llm:
-  groq:
-    api_key: "${GROQ_API_KEY}"
-    model: "llama-3.3-70b-versatile"  # ✅ Non-thinking model — no internal reasoning leakage into TTS
-    temperature: 0.25
-    max_tokens: 120
   gemini:
     api_key: "${GEMINI_API_KEY}"
-    model: "gemini-2.0-flash"
+    model: "gemini-3.8-flash"
     temperature: 0.25
     max_tokens: 120
-  deepseek:
-    api_key: "${DEEPSEEK_API_KEY}"
-    base_url: "https://api.deepseek.com"
-    model: "deepseek-chat"
-    temperature: 0.25
 
-# Text-To-Speech (TTS) Settings
 tts:
-  edgetts:
-    voice: "hi-IN-SwaraNeural"       # Expressive Hindi Female: hi-IN-SwaraNeural | Indian English: en-IN-NeerjaNeural | Male: hi-IN-MadhurNeural
-    rate: "+12%"                     # Natural conversational telecaller pace (removes sluggish pause)
-    pitch: "+2Hz"                    # Cheerful, sweet, and lively conversational inflection
-  sarvam:
-    api_key: "${SARVAM_API_KEY}"
-    speaker: "meera"                 # Authentic Indian vernacular voices (meera, ananya)
-    language_code: "hi-IN"
-    model: "bulbul:v1"
-  cartesia:
-    api_key: "${CARTESIA_API_KEY}"
-    model_id: "sonic-multilingual"
-    voice_id: "694f120f-baa9-4938-8996-9b603e30dceb"
+  deepgram:
+    api_key: "${DEEPGRAM_API_KEY}"
+    model: "aura-2-asteria-en"
+    sample_rate: 24000
 
-# Audio & Voice Activity Detection (VAD) Settings (Silero Neural VAD + Adaptive Gate)
 vad:
   chunk_duration_ms: 20
   sample_rate: 16000
-  silence_threshold_ms: 450          # Natural conversational pause (450ms)
-  confidence_threshold: 0.55         # Silero neural voice probability threshold (Rejects fan/wind noise <0.15)
-  speech_onset_ms: 100               # Sustained 100ms human voice required to confirm speech
-  min_utterance_speech_ms: 250       # Rejects clicks, pops, breath, coughs (<250ms)
-  barge_in_enabled: true             # Stop AI voice immediately when user genuinely speaks
+  silence_threshold_ms: 450
+  confidence_threshold: 0.55
+  speech_onset_ms: 100
+  min_utterance_speech_ms: 250
+  barge_in_enabled: true
 
-# Telephony Gateway Defaults (Direct SIP / FreeSWITCH / Asterisk)
 telephony:
-  provider: "sip"                    # sip, exotel, plivo
-  sample_rate: 8000                  # 8kHz μ-law standard telephony
-
+  provider: "sip"
+  sample_rate: 8000

@@ -30,17 +30,9 @@ if os.path.exists(ENV_PATH):
 
 from src.core.pipeline import VoicePipeline
 from src.core.metrics import CostEstimator
-from src.adapters.stt.groq_whisper_stt import GroqWhisperSTT
 from src.adapters.stt.deepgram_stt import DeepgramSTT
-from src.adapters.stt.mock_stt import MockSTT
-from src.adapters.llm.groq_llm import GroqLLM
 from src.adapters.llm.gemini_llm import GeminiLLM
-from src.adapters.llm.deepseek_llm import DeepSeekLLM
-from src.adapters.llm.mock_llm import MockLLM
-from src.adapters.tts.edgetts_adapter import EdgeTTSAdapter
-from src.adapters.tts.sarvam_tts import SarvamTTS
-from src.adapters.tts.cartesia_tts import CartesiaTTS
-from src.adapters.tts.mock_tts import MockTTS
+from src.adapters.tts.deepgram_tts import DeepgramTTS
 from src.knowledge.extractor import DocumentExtractor
 from src.knowledge.prompt_builder import PromptBuilder, AgentProfile
 from src.knowledge.tenant_store import TenantStore
@@ -68,90 +60,30 @@ static_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 tenant_store = TenantStore()
 
-def build_adapters(stt_choice: Optional[str] = None, llm_choice: Optional[str] = None, tts_choice: Optional[str] = None):
+def build_adapters():
     """
-    Factory function to instantiate pure, low-cost/self-hosted hot-swappable adapters:
-    STT  : Groq Whisper-large-v3-turbo (locked 'hi' / Hinglish prompt)
-    LLM  : Groq Qwen / Llama 3.3 (ultra-fast LPU generation)
-    TTS  : EdgeTTS (100% Free zero-key Indian natural voice) | Sarvam | Cartesia
+    Factory function to instantiate STT, LLM, and TTS adapters.
+    Hard-locked to Deepgram STT, Gemini LLM, and Deepgram TTS.
     """
-    groq_key = os.getenv("GROQ_API_KEY", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY", "")
-    sarvam_key = os.getenv("SARVAM_API_KEY", "")
-    cartesia_key = os.getenv("CARTESIA_API_KEY", "")
     deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
 
-    default_stt_cfg = config.get("pipeline", {}).get("default_stt", "groq")
-    target_stt = stt_choice or default_stt_cfg
-
-    # STT Adapter Resolution: Deepgram -> Groq Whisper (LPU) -> Mock
-    if target_stt == "deepgram" and deepgram_key:
-        stt = DeepgramSTT(api_key=deepgram_key, language="hi")
-    elif target_stt == "groq" and groq_key:
-        groq_stt_model = config.get("stt", {}).get("groq", {}).get("model", "whisper-large-v3-turbo")
-        stt = GroqWhisperSTT(api_key=groq_key, model=groq_stt_model, language="hi")
-    elif deepgram_key and target_stt == "deepgram":
-        stt = DeepgramSTT(api_key=deepgram_key)
-    elif groq_key:
-        groq_stt_model = config.get("stt", {}).get("groq", {}).get("model", "whisper-large-v3-turbo")
-        stt = GroqWhisperSTT(api_key=groq_key, model=groq_stt_model, language="hi")
-    else:
-        stt = MockSTT()
-
-    # LLM Adapter Resolution: Groq -> Gemini -> DeepSeek -> Mock
-    default_llm_cfg = config.get("pipeline", {}).get("default_llm", "groq")
-    target_llm = llm_choice or default_llm_cfg
-    groq_llm_model = config.get("llm", {}).get("groq", {}).get("model", "llama-3.3-70b-versatile")
-
-    if target_llm == "groq" and groq_key:
-        llm = GroqLLM(api_key=groq_key, model=groq_llm_model)
-    elif target_llm == "gemini" and gemini_key:
-        llm = GeminiLLM(api_key=gemini_key)
-    elif target_llm == "deepseek" and deepseek_key:
-        llm = DeepSeekLLM(api_key=deepseek_key)
-    elif groq_key:
-        llm = GroqLLM(api_key=groq_key, model=groq_llm_model)
-    else:
-        llm = MockLLM()
-
-    # TTS Adapter Resolution: EdgeTTS (Free Zero-Key) | Sarvam | Cartesia
-    cartesia_cfg = config.get("tts", {}).get("cartesia", {})
-    edgetts_cfg = config.get("tts", {}).get("edgetts", {})
-
-    default_tts_cfg = config.get("pipeline", {}).get("default_tts", "edgetts")
-    target_tts = tts_choice or default_tts_cfg
-
-    if target_tts == "cartesia" and cartesia_key:
-        tts = CartesiaTTS(
-            api_key=cartesia_key,
-            model_id=cartesia_cfg.get("model_id", "sonic-multilingual"),
-            voice_id=cartesia_cfg.get("voice_id", "694f120f-baa9-4938-8996-9b603e30dceb"),
-        )
-    elif target_tts == "sarvam" and sarvam_key:
-        tts = SarvamTTS(api_key=sarvam_key, speaker=config.get("tts", {}).get("sarvam", {}).get("speaker", "meera"))
-    elif cartesia_key and target_tts == "cartesia":
-        tts = CartesiaTTS(api_key=cartesia_key)
-    elif sarvam_key and target_tts == "sarvam":
-        tts = SarvamTTS(api_key=sarvam_key)
-    else:
-        # EdgeTTS High Quality Expressive Indian Female Voice (Swara/Neerja) - Zero Cost
-        voice_name = edgetts_cfg.get("voice", "hi-IN-SwaraNeural")
-        rate_val = edgetts_cfg.get("rate", "+8%")
-        tts = EdgeTTSAdapter(voice=voice_name, rate=rate_val)
+    stt = DeepgramSTT(api_key=deepgram_key, language="hi")
+    llm = GeminiLLM(api_key=gemini_key)
+    tts = DeepgramTTS(api_key=deepgram_key)
 
     return stt, llm, tts
 
-def create_pipeline(profile, stt_choice: Optional[str] = None, llm_choice: Optional[str] = None, tts_choice: Optional[str] = None) -> VoicePipeline:
+def create_pipeline(profile) -> VoicePipeline:
     """Factory helper to build a fully configured VoicePipeline with adaptive VAD & noise rejection."""
-    stt, llm, tts = build_adapters(stt_choice, llm_choice, tts_choice)
+    stt, llm, tts = build_adapters()
     vad_cfg = config.get("vad", {})
     return VoicePipeline(
         stt=stt,

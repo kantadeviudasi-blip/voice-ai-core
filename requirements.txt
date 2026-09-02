@@ -1,23 +1,13 @@
-# Core Server & Async
-fastapi>=0.110.0
-uvicorn[standard]>=0.28.0
-websockets>=12.0
-pydantic>=2.6.0
-pydantic-settings>=2.2.0
-pyyaml>=6.0.1
-httpx>=0.27.0
-aiofiles>=23.2.1
+fastapi
+uvicorn
+google-genai
+websockets
+pydantic
+pydantic-settings
 
-# Document Processing
-pypdf>=4.1.0
-
-# Speech-to-Text & Audio
-numpy>=1.26.0
-onnxruntime>=1.17.0
-
-# Text-to-Speech (Zero-cost Indian & Global Voices)
-edge-tts>=6.1.10
-
-# Testing & Dev
-pytest>=8.0.0
-pytest-asyncio>=0.23.0
+pyyaml
+httpx
+numpy
+onnxruntime
+pypdf
+python-multipart

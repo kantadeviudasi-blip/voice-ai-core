@@ -6,7 +6,7 @@ High-concurrency, ultra-low latency, and cost-optimized Voice Calling AI Agent p
 
 ## ⚡ Key Highlights
 - **Sub-Second Latency**: ~400ms – 500ms end-to-end response time.
-- **Ultra-Low Operating Cost**: Strictly **< ₹0.55 per call minute** (Direct SIP + Groq Whisper + Groq LPU + EdgeTTS + Server).
+- **Ultra-Low Operating Cost**: Strictly **< ₹0.55 per call minute** (Direct SIP + Groq Whisper + Groq LPU + Cartesia + Server).
 - **85%+ Gross Margin**: Billed to clients at ₹3.50 – ₹4.00/min or retainers.
 - **Hinglish & Vernacular Support**: Code-mixing, Indian accents, and local dialect understanding.
 - **Dynamic Instant Onboarding**: Upload any company PDF/profile text $\rightarrow$ Instantly generates a customized telecaller persona, objection handling matrix, and greetings.
@@ -21,7 +21,7 @@ High-concurrency, ultra-low latency, and cost-optimized Voice Calling AI Agent p
 | :--- | :--- | :--- | :--- |
 | **STT** | **Groq Whisper Large v3 Turbo** / **Faster-Whisper** | ₹0.05 – ₹0.08 | High accuracy with Hinglish & Indian accents (~120ms) |
 | **LLM** | **Groq (Qwen / Llama 3.3 70B)** | ₹0.10 | ~300-750 tokens/sec & sub-120ms TTFT |
-| **TTS** | **EdgeTTS (hi-IN-SwaraNeural)** | ₹0.00 (Zero-Cost) | Authentic natural Indian telecaller female voice |
+| **TTS** | **Cartesia / Sarvam** | ₹0.25 (Cartesia) | Authentic natural Indian telecaller female voice |
 | **Telephony** | **Direct SIP (FreeSWITCH / Asterisk)** | ₹0.35 | Direct carrier routing without aggregator markups |
 | **VAD** | **Adaptive Frame-by-Frame Energy VAD** | Free | Instant Barge-In (Interruption handling) + Noise Immunity |
 

@@ -14,58 +14,30 @@ class PipelineConfig(BaseModel):
     default_llm: str
     default_tts: str
 
-class GroqSTTConfig(BaseModel):
+class DeepgramSTTConfig(BaseModel):
     api_key: Optional[str] = None
-    model: str = "whisper-large-v3-turbo"
+    model: str = "nova-3"
     language: str = "hi"
-    prompt: Optional[str] = None
 
 class STTConfig(BaseModel):
-    groq: GroqSTTConfig = Field(default_factory=GroqSTTConfig)
-
-class GroqLLMConfig(BaseModel):
-    api_key: Optional[str] = None
-    model: str = "llama-3.3-70b-versatile"
-    temperature: float = 0.25
-    max_tokens: int = 150
+    deepgram: DeepgramSTTConfig = Field(default_factory=DeepgramSTTConfig)
 
 class GeminiLLMConfig(BaseModel):
     api_key: Optional[str] = None
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-3.8-flash"
     temperature: float = 0.25
     max_tokens: int = 150
 
-class DeepSeekLLMConfig(BaseModel):
-    api_key: Optional[str] = None
-    base_url: str = "https://api.deepseek.com"
-    model: str = "deepseek-chat"
-    temperature: float = 0.25
-
 class LLMConfig(BaseModel):
-    groq: GroqLLMConfig = Field(default_factory=GroqLLMConfig)
     gemini: GeminiLLMConfig = Field(default_factory=GeminiLLMConfig)
-    deepseek: DeepSeekLLMConfig = Field(default_factory=DeepSeekLLMConfig)
 
-class EdgeTTSConfig(BaseModel):
-    voice: str = "hi-IN-SwaraNeural"
-    rate: str = "+12%"
-    pitch: str = "+2Hz"
-
-class SarvamTTSConfig(BaseModel):
+class DeepgramTTSConfig(BaseModel):
     api_key: Optional[str] = None
-    speaker: str = "meera"
-    language_code: str = "hi-IN"
-    model: str = "bulbul:v1"
-
-class CartesiaTTSConfig(BaseModel):
-    api_key: Optional[str] = None
-    model_id: str = "sonic-multilingual"
-    voice_id: str = "694f120f-baa9-4938-8996-9b603e30dceb"
+    model: str = "aura-2-asteria-en"
+    sample_rate: int = 24000
 
 class TTSConfig(BaseModel):
-    edgetts: EdgeTTSConfig = Field(default_factory=EdgeTTSConfig)
-    sarvam: SarvamTTSConfig = Field(default_factory=SarvamTTSConfig)
-    cartesia: CartesiaTTSConfig = Field(default_factory=CartesiaTTSConfig)
+    deepgram: DeepgramTTSConfig = Field(default_factory=DeepgramTTSConfig)
 
 class VADConfig(BaseModel):
     chunk_duration_ms: int = Field(20, ge=10)
@@ -87,7 +59,6 @@ class TelephonyConfig(BaseModel):
     sample_rate: int = 8000
 
 class AppSettings(BaseSettings):
-    # App Settings
     server: ServerConfig = Field(default_factory=ServerConfig)
     pipeline: PipelineConfig
     stt: STTConfig = Field(default_factory=STTConfig)
@@ -97,11 +68,8 @@ class AppSettings(BaseSettings):
     telephony: TelephonyConfig = Field(default_factory=TelephonyConfig)
 
     # Env variables mapping
-    GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
-    DEEPSEEK_API_KEY: Optional[str] = None
-    SARVAM_API_KEY: Optional[str] = None
-    CARTESIA_API_KEY: Optional[str] = None
+    DEEPGRAM_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
@@ -118,33 +86,22 @@ def load_config() -> AppSettings:
     with open(config_path, "r", encoding="utf-8") as f:
         raw_config = yaml.safe_load(f)
     
-    # Initialize Pydantic BaseSettings with raw_config values.
-    # Any missing or invalid values will raise ValidationError.
     settings = AppSettings(**raw_config)
 
-    # Map API keys from env to the config objects dynamically if they exist
-    if settings.GROQ_API_KEY:
-        settings.stt.groq.api_key = settings.GROQ_API_KEY
-        settings.llm.groq.api_key = settings.GROQ_API_KEY
+    if settings.DEEPGRAM_API_KEY:
+        settings.stt.deepgram.api_key = settings.DEEPGRAM_API_KEY
+        settings.tts.deepgram.api_key = settings.DEEPGRAM_API_KEY
     if settings.GEMINI_API_KEY:
         settings.llm.gemini.api_key = settings.GEMINI_API_KEY
-    if settings.DEEPSEEK_API_KEY:
-        settings.llm.deepseek.api_key = settings.DEEPSEEK_API_KEY
-    if settings.SARVAM_API_KEY:
-        settings.tts.sarvam.api_key = settings.SARVAM_API_KEY
-    if settings.CARTESIA_API_KEY:
-        settings.tts.cartesia.api_key = settings.CARTESIA_API_KEY
 
     # Fail fast if default keys are missing
-    if settings.pipeline.default_llm == "groq" and not settings.llm.groq.api_key:
-        raise ValueError("GROQ_API_KEY is required when default_llm is 'groq'")
     if settings.pipeline.default_llm == "gemini" and not settings.llm.gemini.api_key:
-        raise ValueError("GEMINI_API_KEY is required when default_llm is 'gemini'")
-    
-    if settings.pipeline.default_stt == "groq" and not settings.stt.groq.api_key:
-        raise ValueError("GROQ_API_KEY is required when default_stt is 'groq'")
+        raise ValueError("GEMINI_API_KEY is required")
+    if settings.pipeline.default_stt == "deepgram" and not settings.stt.deepgram.api_key:
+        raise ValueError("DEEPGRAM_API_KEY is required for STT")
+    if settings.pipeline.default_tts == "deepgram" and not settings.tts.deepgram.api_key:
+        raise ValueError("DEEPGRAM_API_KEY is required for TTS")
 
     return settings
 
-# Singleton instance
 config = load_config()

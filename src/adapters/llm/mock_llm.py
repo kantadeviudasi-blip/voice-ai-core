@@ -4,10 +4,17 @@ from src.adapters.llm.base import BaseLLM
 
 class MockLLM(BaseLLM):
     """
-    Mock LLM Adapter for ultra-fast local testing and benchmarking without external API keys.
+    Mock LLM Brain Adapter for testing and local zero-cost emulation.
     """
-    def __init__(self, model: str = "mock-telecaller-v1", temperature: float = 0.3, max_tokens: int = 150):
+    def __init__(
+        self,
+        model: str = "mock-model",
+        temperature: float = 0.3,
+        max_tokens: int = 150,
+        simulated_response: str = "Haan ji, hum CRM automation aur live demo provide karte hain."
+    ):
         super().__init__(model=model, temperature=temperature, max_tokens=max_tokens)
+        self.simulated_response = simulated_response
 
     async def generate_stream(
         self,
@@ -15,17 +22,12 @@ class MockLLM(BaseLLM):
         system_prompt: str,
         tools: Optional[List[Dict[str, Any]]] = None
     ) -> AsyncGenerator[str, None]:
-        # Realistic Indian telecaller conversational response chunks
-        chunks = [
-            "Namaste sir! ",
-            "Humare paas 2 aur 3 BHK ",
-            "luxury flats available hain, ",
-            "starting price sirf 45 Lakhs hai. ",
-            "Kya aap Saturday ko site visit ke liye comfortable hain?"
-        ]
-        for chunk in chunks:
-            await asyncio.sleep(0.04) # ~40ms token delay
-            yield chunk
+        # Yield word by word with minimal delay to simulate token streaming
+        words = self.simulated_response.split(" ")
+        for i, word in enumerate(words):
+            token = word + (" " if i < len(words) - 1 else "")
+            await asyncio.sleep(0.01)
+            yield token
 
     async def generate(self, messages: List[Dict[str, str]], system_prompt: str) -> str:
-        return "Namaste sir! Humare paas 2 aur 3 BHK luxury flats available hain. Kya aap Saturday ko site visit ke liye comfortable hain?"
+        return self.simulated_response

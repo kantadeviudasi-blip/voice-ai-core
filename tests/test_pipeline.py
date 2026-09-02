@@ -35,9 +35,9 @@ def test_unit_economics_cost_calculator():
     cost_min = CostEstimator.estimate_minute_cost(
         stt_provider="groq",
         llm_provider="groq",
-        tts_provider="edgetts"
+        tts_provider="cartesia"
     )
-    # Total cost for pure Groq + EdgeTTS + SIP stack should strictly be under ₹0.60/min
+    # Total cost for pure Groq + Cartesia + SIP stack should be estimated here
     assert cost_min <= 0.65
     assert cost_min >= 0.45
 

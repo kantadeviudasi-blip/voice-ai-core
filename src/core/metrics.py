@@ -62,7 +62,6 @@ class CostEstimator:
         "llm_groq": 0.10,           # ~₹0.10 / min
         "llm_gemini_flash": 0.08,   # ~₹0.08 / min
         "llm_deepseek": 0.09,       # ~₹0.09 / min
-        "tts_edgetts": 0.00,        # Zero cost (100% Free)
         "tts_sarvam": 0.18,         # ₹0.18 / min
         "tts_cartesia": 0.25,       # ₹0.25 / min
         "server": 0.04              # Ingress / WebSocket node
