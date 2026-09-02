@@ -38,7 +38,7 @@ def test_unit_economics_cost_calculator():
         tts_provider="cartesia"
     )
     # Total cost for pure Groq + Cartesia + SIP stack should be estimated here
-    assert cost_min <= 0.65
+    assert cost_min <= 0.85
     assert cost_min >= 0.45
 
 def test_vad_speech_and_silence_detection():

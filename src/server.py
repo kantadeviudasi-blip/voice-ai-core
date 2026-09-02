@@ -10,8 +10,8 @@ import json
 import yaml
 import asyncio
 from typing import Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -69,15 +69,31 @@ tenant_store = TenantStore()
 
 def build_adapters():
     """
-    Factory function to instantiate STT, LLM, and TTS adapters.
-    Hard-locked to Deepgram STT, Gemini LLM, and Deepgram TTS.
+    Factory function to instantiate STT, LLM, and TTS adapters based on active config.yaml.
     """
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
 
-    stt = DeepgramSTT(api_key=deepgram_key, language="hi")
-    llm = GeminiLLM(api_key=gemini_key)
-    tts = DeepgramTTS(api_key=deepgram_key)
+    stt_cfg = config.get("stt", {}).get("deepgram", {})
+    llm_cfg = config.get("llm", {}).get("gemini", {})
+    tts_cfg = config.get("tts", {}).get("deepgram", {})
+
+    stt = DeepgramSTT(
+        api_key=deepgram_key,
+        model=stt_cfg.get("model", "nova-3"),
+        language=stt_cfg.get("language", "hi")
+    )
+    llm = GeminiLLM(
+        api_key=gemini_key,
+        model=llm_cfg.get("model", "gemini-3.8-flash"),
+        temperature=llm_cfg.get("temperature", 0.25),
+        max_tokens=llm_cfg.get("max_tokens", 150)
+    )
+    tts = DeepgramTTS(
+        api_key=deepgram_key,
+        model=tts_cfg.get("model", "aura-2-asteria-en"),
+        sample_rate=tts_cfg.get("sample_rate", 24000)
+    )
 
     return stt, llm, tts
 
@@ -376,9 +392,15 @@ STATIC_HTML_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sta
 
 @app.get("/")
 @app.get("/test")
-def test_console():
-    """Serve the browser Voice AI Test Console UI (index.html)."""
-    from fastapi.responses import FileResponse
+def test_console(request: Request):
+    """
+    Serves the browser Voice AI Test Console UI (index.html) for web browsers,
+    or JSON health status for API/test clients requesting root.
+    """
+    accept_header = request.headers.get("accept", "")
+    if request.url.path == "/" and "text/html" not in accept_header:
+        return health_check()
+
     if os.path.exists(STATIC_HTML_PATH):
         return FileResponse(STATIC_HTML_PATH)
     return HTMLResponse("<h1>Voice AI Test Console: static/index.html not found</h1>")

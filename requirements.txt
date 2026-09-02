@@ -11,3 +11,5 @@ numpy
 onnxruntime
 pypdf
 python-multipart
+pytest
+pytest-asyncio
