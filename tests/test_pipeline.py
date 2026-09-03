@@ -1,5 +1,8 @@
 import asyncio
+import os
 import pytest
+from dotenv import load_dotenv
+load_dotenv()
 from src.knowledge.prompt_builder import PromptBuilder
 from src.knowledge.extractor import DocumentExtractor
 from src.core.vad import VoiceActivityDetector, VADState
@@ -7,7 +10,7 @@ from src.core.metrics import LatencyTracker, CostEstimator
 from src.core.pipeline import VoicePipeline
 from src.adapters.stt.mock_stt import MockSTT
 from src.adapters.llm.mock_llm import MockLLM
-from src.adapters.tts.mock_tts import MockTTS
+from src.adapters.tts.deepgram_tts import DeepgramTTS
 
 def test_document_to_agent_synthesis():
     sample_text = """GreenTech Solar Solutions Jaipur.
@@ -146,9 +149,10 @@ async def test_end_to_end_voice_pipeline_turn():
 
     stt = MockSTT(simulated_text="Kya aap CRM demo provide karte hain?")
     llm = MockLLM()
-    tts = MockTTS()
+    tts = DeepgramTTS()
 
     pipeline = VoicePipeline(stt=stt, llm=llm, tts=tts, agent_profile=profile)
+    await pipeline.start()
     
     received_audio_chunks = []
     received_events = []
@@ -162,7 +166,7 @@ async def test_end_to_end_voice_pipeline_turn():
     await pipeline._process_turn(b"\x00" * 3200)
 
     import asyncio
-    await asyncio.sleep(0.1) # Yield to audio worker
+    await asyncio.sleep(1.0) # Yield for real Deepgram streaming
 
     # Verify turn completed
     assert len(pipeline.session.messages) == 2
@@ -171,6 +175,7 @@ async def test_end_to_end_voice_pipeline_turn():
     assert pipeline.session.messages[1]["role"] == "assistant"
     assert len(received_audio_chunks) > 0
     assert any(evt == "turn_metrics" for evt, _ in received_events)
+    await pipeline.close()
 
 def test_text_normalization_for_tts():
     from src.core.pipeline import clean_text_for_tts
@@ -195,8 +200,9 @@ async def test_direct_text_turn_processing():
     )
     stt = MockSTT()
     llm = MockLLM()
-    tts = MockTTS()
+    tts = DeepgramTTS()
     pipeline = VoicePipeline(stt=stt, llm=llm, tts=tts, agent_profile=profile)
+    await pipeline.start()
     
     received_audio = []
     pipeline.set_callbacks(outbound_audio_callback=lambda c: received_audio.append(c))
@@ -205,9 +211,11 @@ async def test_direct_text_turn_processing():
     if task:
         await task
 
+    await asyncio.sleep(1.0) # Yield for Deepgram real streaming audio
     assert len(pipeline.session.messages) == 2
     assert pipeline.session.messages[0]["content"] == "Subsidy kitni milegi?"
     assert len(received_audio) > 0
+    await pipeline.close()
 
 def test_multidomain_prompt_synthesis():
     solar_profile = PromptBuilder.synthesize_profile(
@@ -231,17 +239,12 @@ async def test_barge_in_task_cancellation_and_queue_flush():
         extracted_text="We offer CRM and Automation services."
     )
 
-    class SlowMockTTS(MockTTS):
-        async def synthesize_stream(self, text: str):
-            for i in range(10):
-                await asyncio.sleep(0.05)
-                yield b"\x01\x02" * 160
-
     stt = MockSTT(simulated_text="Hello")
     llm = MockLLM()
-    tts = SlowMockTTS()
+    tts = DeepgramTTS()
 
     pipeline = VoicePipeline(stt=stt, llm=llm, tts=tts, agent_profile=profile)
+    await pipeline.start()
     dispatched_audio = []
     events = []
 

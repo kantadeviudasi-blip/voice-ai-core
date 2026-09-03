@@ -151,14 +151,21 @@ class VoicePipeline:
 
     def _on_tts_audio_chunk(self, chunk: bytes):
         """Callback for real-time TTS streaming (e.g. Deepgram)."""
-        if self.session.state == SessionState.SPEAKING:
-            if not self._tts_first_chunk_received:
-                self.latency_tracker.mark_tts_first_audio()
-                self._tts_first_chunk_received = True
-            try:
-                self.audio_output_queue.put_nowait(chunk)
-            except asyncio.QueueFull:
-                pass
+        if self.session.state == SessionState.LISTENING:
+            return
+
+        if not self._tts_first_chunk_received:
+            self.latency_tracker.mark_tts_first_audio()
+            self._tts_first_chunk_received = True
+
+        self.vad.set_agent_speaking(True)
+        self.session.state = SessionState.SPEAKING
+        self._ensure_audio_worker()
+
+        try:
+            self.audio_output_queue.put_nowait(chunk)
+        except asyncio.QueueFull:
+            pass
 
     def set_callbacks(
         self,
@@ -416,6 +423,13 @@ class VoicePipeline:
             # Synthesize remaining text
             if sentence_buffer.strip():
                 await self._stream_tts(sentence_buffer.strip())
+
+            if self.using_streaming_tts:
+                try:
+                    await asyncio.sleep(0.4)
+                    await asyncio.wait_for(self.audio_output_queue.join(), timeout=3.0)
+                except (asyncio.TimeoutError, asyncio.CancelledError):
+                    pass
 
             full_response_text = "".join(agent_response_full).strip()
             self._emit_event("transcript", {"role": "assistant", "text": full_response_text})

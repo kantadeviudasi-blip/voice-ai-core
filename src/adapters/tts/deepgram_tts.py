@@ -21,6 +21,13 @@ class DeepgramTTS(BaseTTS):
         super().__init__(voice=model)
         self.sample_rate = sample_rate
         self.api_key = api_key or os.getenv("DEEPGRAM_API_KEY", "")
+        if not self.api_key:
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+                self.api_key = os.getenv("DEEPGRAM_API_KEY", "")
+            except Exception:
+                pass
         self.model = model
         
         self.ws_connection: Optional[websockets.WebSocketClientProtocol] = None
