@@ -228,16 +228,50 @@ def get_tenant_profile(tenant_id: str):
 # ==============================================================================
 
 @app.websocket("/ws/audio/{tenant_id}")
-async def universal_audio_stream(websocket: WebSocket, tenant_id: str):
+async def universal_audio_stream(
+    websocket: WebSocket,
+    tenant_id: str,
+    channel: Optional[str] = None,
+    sample_rate: Optional[int] = None
+):
     """
     Universal Bidirectional Audio WebSocket for Browser Testing & General SIP Gateways.
+    Dynamically supports 8kHz (telephony), 16kHz (mobile HD), and 24kHz (web studio).
+    Can be controlled via query params (?channel=mobile or ?sample_rate=16000),
+    User-Agent auto-detection, or environment variable AUDIO_SAMPLE_RATE.
     """
     await websocket.accept()
     profile = tenant_store.get_profile(tenant_id)
     if not profile:
         profile = tenant_store.get_profile("apex-solar-solutions")
 
-    pipeline = create_pipeline(profile, channel="web", sample_rate=24000)
+    # 1. Determine active channel & sample_rate dynamically
+    active_channel = channel or os.getenv("AUDIO_CHANNEL", "").strip() or None
+    active_sr = sample_rate
+    if active_sr is None and os.getenv("AUDIO_SAMPLE_RATE"):
+        try:
+            active_sr = int(os.getenv("AUDIO_SAMPLE_RATE", "0"))
+        except ValueError:
+            pass
+
+    # 2. Auto-detect mobile device from User-Agent if not specified
+    user_agent = websocket.headers.get("user-agent", "").lower()
+    if not active_channel and any(m in user_agent for m in ["mobi", "android", "iphone", "ipad"]):
+        active_channel = "mobile"
+
+    # 3. Fall back to standard defaults
+    if not active_channel:
+        active_channel = "web"
+
+    if active_sr not in (8000, 16000, 24000):
+        if active_channel == "telephony":
+            active_sr = 8000
+        elif active_channel == "mobile":
+            active_sr = 16000
+        else:
+            active_sr = 24000
+
+    pipeline = create_pipeline(profile, channel=active_channel, sample_rate=active_sr)
 
     # Outbound callback to stream audio chunks back over WebSocket
     def on_outbound_audio(chunk: bytes):
@@ -260,6 +294,9 @@ async def universal_audio_stream(websocket: WebSocket, tenant_id: str):
 
     # Initialize streaming STT if supported
     await pipeline.start()
+
+    # Emit session negotiated configuration
+    on_event("session_config", {"channel": active_channel, "sample_rate": active_sr})
 
     # Trigger Initial Agent Greeting
     asyncio.create_task(pipeline.trigger_greeting())

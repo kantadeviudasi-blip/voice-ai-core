@@ -67,6 +67,25 @@ def test_browser_websocket_flow_and_barge_in():
         
         assert found_interrupt is True
 
+def test_dynamic_sample_rate_and_channel_negotiation():
+    # 1. Test mobile channel negotiation (16kHz)
+    with client.websocket_connect("/ws/audio/test-tenant?channel=mobile&sample_rate=16000") as ws:
+        msg = ws.receive()
+        assert "text" in msg
+        data = json.loads(msg["text"])
+        assert data.get("event") == "session_config"
+        assert data.get("data", {}).get("channel") == "mobile"
+        assert data.get("data", {}).get("sample_rate") == 16000
+
+    # 2. Test telephony channel negotiation (8kHz)
+    with client.websocket_connect("/ws/audio/test-tenant?channel=telephony&sample_rate=8000") as ws:
+        msg = ws.receive()
+        assert "text" in msg
+        data = json.loads(msg["text"])
+        assert data.get("event") == "session_config"
+        assert data.get("data", {}).get("channel") == "telephony"
+        assert data.get("data", {}).get("sample_rate") == 8000
+
 def test_direct_sip_websocket_flow():
     with client.websocket_connect("/ws/sip/test-tenant") as ws:
         # Send audio media chunk (binary linear PCM)

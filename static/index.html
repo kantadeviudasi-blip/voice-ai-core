@@ -67,6 +67,14 @@
                     <option value="greentech-solar">🌱 GreenTech Solar India (Rooftop Solar)</option>
                 </select>
 
+                <label>Audio Quality / Channel:</label>
+                <select id="audioChannelSelect">
+                    <option value="auto">🔄 Auto (Mobile: 16kHz HD / Laptop: 24kHz Studio)</option>
+                    <option value="mobile">📱 Mobile Wideband HD (16kHz)</option>
+                    <option value="telephony">📞 Telephony / PSTN (8kHz Narrowband)</option>
+                    <option value="web">💻 Studio Web (24kHz Full-Band)</option>
+                </select>
+
                 <div class="audio-wave" id="waveBox" title="Microphone Level Visualizer">
                     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
                 </div>
@@ -185,8 +193,24 @@
 
         async function startCall() {
             const tenant = document.getElementById('tenantSelect').value;
+            const quality = document.getElementById('audioChannelSelect').value;
             const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${proto}//${window.location.host}/ws/audio/${tenant}`;
+            
+            // Build dynamic query parameters for audio channel & sample rate
+            const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+            let qParams = [];
+            if (quality === 'auto') {
+                qParams.push(isMobile ? 'channel=mobile&sample_rate=16000' : 'channel=web&sample_rate=24000');
+            } else if (quality === 'mobile') {
+                qParams.push('channel=mobile&sample_rate=16000');
+            } else if (quality === 'telephony') {
+                qParams.push('channel=telephony&sample_rate=8000');
+            } else if (quality === 'web') {
+                qParams.push('channel=web&sample_rate=24000');
+            }
+
+            const qs = qParams.length ? '?' + qParams.join('&') : '';
+            const wsUrl = `${proto}//${window.location.host}/ws/audio/${tenant}${qs}`;
 
             ws = new WebSocket(wsUrl);
             ws.binaryType = 'arraybuffer';
@@ -203,7 +227,11 @@
             ws.onmessage = (event) => {
                 if (typeof event.data === 'string') {
                     const msg = JSON.parse(event.data);
-                    if (msg.event === 'transcript') {
+                    if (msg.event === 'session_config') {
+                        const ch = (msg.data.channel || 'web').toUpperCase();
+                        const sr = (msg.data.sample_rate || 24000) / 1000;
+                        log('sys', `[Audio Stream Config] Channel: ${ch} | Sample Rate: ${sr} kHz`);
+                    } else if (msg.event === 'transcript') {
                         log(msg.data.role, (msg.data.role === 'assistant' ? '🤖 Agent: ' : '👤 User: ') + msg.data.text);
                     } else if (msg.event === 'turn_metrics') {
                         document.getElementById('m-stt').innerText = (msg.data.stt_latency_ms || 0) + ' ms';
