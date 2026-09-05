@@ -9,7 +9,7 @@ server:
 pipeline:
   default_stt: "deepgram"
   default_llm: "gemini"
-  default_tts: "deepgram"
+  default_tts: "sarvam"
 
 stt:
   deepgram:
@@ -25,6 +25,13 @@ llm:
     max_tokens: 120
 
 tts:
+  sarvam:
+    api_key: "${SARVAM_API_KEY}"
+    model: "bulbul:v3"
+    speaker: "ritu"
+    target_language_code: "hi-IN"
+    sample_rate: 8000
+    pace: 1.0
   deepgram:
     api_key: "${DEEPGRAM_API_KEY}"
     model: "aura-2-asteria-en"

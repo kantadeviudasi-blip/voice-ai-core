@@ -72,9 +72,35 @@ async def test_deepgram_tts():
     except Exception as e:
         print(f"  Deepgram TTS FAILED: {e}")
 
+async def test_sarvam_tts():
+    print("\n=== Testing Sarvam AI TTS (Bulbul:v3 - Female Voice) ===")
+    try:
+        from src.adapters.tts.sarvam_tts import SarvamTTS
+        api_key = os.environ.get("SARVAM_API_KEY")
+        print(f"Sarvam API Key present: {bool(api_key)}, length: {len(api_key) if api_key else 0}")
+        if not api_key:
+            print("  FAILED - No SARVAM_API_KEY found in environment")
+            return False
+
+        for sr, label in [(8000, "Telephony (8kHz)"), (16000, "Mobile/HD Voice (16kHz)"), (24000, "Web/Studio (24kHz)")]:
+            tts = SarvamTTS(api_key=api_key, speaker="ritu", sample_rate=sr)
+            test_text = "नमस्ते! मैं रितु बोल रही हूँ, सनराइज हाइट्स से।"
+            audio = await tts.synthesize(test_text)
+            await tts.close()
+            if len(audio) > 1000:
+                print(f"  OK - {label}: Generated {len(audio)} bytes of audio successfully.")
+            else:
+                print(f"  FAILED - {label}: Returned insufficient audio ({len(audio)} bytes)")
+                return False
+        return True
+    except Exception as e:
+        print(f"  Sarvam TTS FAILED: {e}")
+        return False
+
 async def main():
     working_model = await test_gemini()
     await test_deepgram_tts()
+    await test_sarvam_tts()
     if working_model:
         print(f"\n=== RESULT: Use model '{working_model}' in pipeline.py ===")
 

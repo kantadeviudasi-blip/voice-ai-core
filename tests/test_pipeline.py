@@ -289,3 +289,38 @@ def test_telephony_clear_buffer_signals():
     plivo_clear = json.loads(plivo.create_clear_response())
     assert plivo_clear["event"] == "clearAudio"
 
+def test_telephony_multi_sample_rate_bridge():
+    from src.telephony.base_telephony import BaseTelephonyBridge
+
+    # 1 second of audio at 8kHz, 16kHz, 24kHz
+    pcm8k = b"\x10\x00" * 8000
+    pcm16k = b"\x10\x00" * 16000
+    pcm24k = b"\x10\x00" * 24000
+
+    mu8k = BaseTelephonyBridge.pcm8k_to_mulaw(pcm8k)
+    mu16k = BaseTelephonyBridge.pcm16_to_mulaw(pcm16k)
+    mu24k = BaseTelephonyBridge.pcm_to_mulaw(pcm24k, sample_rate=24000)
+
+    # All should be converted to standard 8000 bytes per second telephony mu-law
+    assert len(mu8k) == 8000
+    assert len(mu16k) == 8000
+    assert len(mu24k) == 8000
+
+    # Test WAV container header stripping
+    wav_with_header = b"RIFF" + b"\x00" * 40 + pcm8k
+    mu_stripped = BaseTelephonyBridge.pcm8k_to_mulaw(wav_with_header)
+    assert len(mu_stripped) == 8000
+
+@pytest.mark.asyncio
+async def test_sarvam_tts_synthesis():
+    from src.adapters.tts.sarvam_tts import SarvamTTS
+    sarvam_key = os.getenv("SARVAM_API_KEY")
+    if not sarvam_key:
+        pytest.skip("SARVAM_API_KEY not set")
+
+    tts = SarvamTTS(api_key=sarvam_key, speaker="ritu", sample_rate=8000)
+    audio = await tts.synthesize("नमस्ते, मैं आपकी क्या सहायता कर सकती हूँ?")
+    await tts.close()
+    assert len(audio) > 1000
+    assert audio.startswith(b"RIFF")
+

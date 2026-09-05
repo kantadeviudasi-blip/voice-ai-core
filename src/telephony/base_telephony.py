@@ -59,12 +59,33 @@ class BaseTelephonyBridge(ABC):
         return bytes(pcm16k_samples)
 
     @staticmethod
+    def pcm_to_mulaw(pcm_bytes: bytes, sample_rate: int = 8000) -> bytes:
+        """
+        Converts PCM audio (8kHz, 16kHz, or 24kHz) to standard 8kHz mu-law for telephony playback.
+        Automatically strips RIFF/WAVE container header if present.
+        """
+        if pcm_bytes.startswith(b"RIFF") and len(pcm_bytes) >= 44:
+            pcm_bytes = pcm_bytes[44:]
+
+        step = 2
+        if sample_rate == 16000:
+            step = 4
+        elif sample_rate == 24000:
+            step = 6
+
+        mulaw_bytes = bytearray()
+        for i in range(0, len(pcm_bytes) - 1, step):
+            if i + 2 <= len(pcm_bytes):
+                sample = struct.unpack("<h", pcm_bytes[i:i+2])[0]
+                mulaw_bytes.append(_linear2ulaw(sample))
+        return bytes(mulaw_bytes)
+
+    @staticmethod
+    def pcm8k_to_mulaw(pcm8k_bytes: bytes) -> bytes:
+        """Converts 8kHz PCM audio directly to 8kHz mu-law without downsampling."""
+        return BaseTelephonyBridge.pcm_to_mulaw(pcm8k_bytes, sample_rate=8000)
+
+    @staticmethod
     def pcm16_to_mulaw(pcm16k_bytes: bytes) -> bytes:
         """Converts 16kHz PCM audio to 8kHz mu-law for telephony playback."""
-        mulaw_bytes = bytearray()
-        # Downsample 16kHz to 8kHz by taking every 2nd sample (4 bytes per 2 samples)
-        for i in range(0, len(pcm16k_bytes) - 3, 4):
-            sample = struct.unpack("<h", pcm16k_bytes[i:i+2])[0]
-            mulaw_byte = _linear2ulaw(sample)
-            mulaw_bytes.append(mulaw_byte)
-        return bytes(mulaw_bytes)
+        return BaseTelephonyBridge.pcm_to_mulaw(pcm16k_bytes, sample_rate=16000)

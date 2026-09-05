@@ -33,6 +33,7 @@ from src.core.metrics import CostEstimator
 from src.adapters.stt.deepgram_stt import DeepgramSTT
 from src.adapters.llm.gemini_llm import GeminiLLM
 from src.adapters.tts.deepgram_tts import DeepgramTTS
+from src.adapters.tts.sarvam_tts import SarvamTTS
 from src.knowledge.extractor import DocumentExtractor
 from src.knowledge.prompt_builder import PromptBuilder, AgentProfile
 from src.knowledge.tenant_store import TenantStore
@@ -67,16 +68,27 @@ app.add_middleware(
 
 tenant_store = TenantStore()
 
-def build_adapters():
+def build_adapters(channel: str = "web", sample_rate: Optional[int] = None):
     """
-    Factory function to instantiate STT, LLM, and TTS adapters based on active config.yaml.
+    Factory function to instantiate STT, LLM, and TTS adapters based on active config.yaml
+    and dynamic client channel (telephony=8000Hz, mobile=16000Hz, web=24000Hz).
     """
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     deepgram_key = os.getenv("DEEPGRAM_API_KEY", "")
+    sarvam_key = os.getenv("SARVAM_API_KEY", "")
 
     stt_cfg = config.get("stt", {}).get("deepgram", {})
     llm_cfg = config.get("llm", {}).get("gemini", {})
-    tts_cfg = config.get("tts", {}).get("deepgram", {})
+    default_tts = config.get("pipeline", {}).get("default_tts", "sarvam")
+
+    # Determine channel-specific sample rate if not explicitly supplied
+    if sample_rate is None:
+        if channel == "telephony":
+            sample_rate = 8000
+        elif channel == "mobile":
+            sample_rate = 16000
+        else:
+            sample_rate = 24000
 
     stt = DeepgramSTT(
         api_key=deepgram_key,
@@ -89,17 +101,30 @@ def build_adapters():
         temperature=llm_cfg.get("temperature", 0.25),
         max_tokens=llm_cfg.get("max_tokens", 150)
     )
-    tts = DeepgramTTS(
-        api_key=deepgram_key,
-        model=tts_cfg.get("model", "aura-2-asteria-en"),
-        sample_rate=tts_cfg.get("sample_rate", 24000)
-    )
+
+    if default_tts == "sarvam":
+        sarvam_cfg = config.get("tts", {}).get("sarvam", {})
+        tts = SarvamTTS(
+            api_key=sarvam_key,
+            model=sarvam_cfg.get("model", "bulbul:v3"),
+            speaker=sarvam_cfg.get("speaker", "ritu"),
+            sample_rate=sample_rate,
+            target_language_code=sarvam_cfg.get("target_language_code", "hi-IN"),
+            pace=sarvam_cfg.get("pace", 1.0)
+        )
+    else:
+        tts_cfg = config.get("tts", {}).get("deepgram", {})
+        tts = DeepgramTTS(
+            api_key=deepgram_key,
+            model=tts_cfg.get("model", "aura-2-asteria-en"),
+            sample_rate=sample_rate
+        )
 
     return stt, llm, tts
 
-def create_pipeline(profile) -> VoicePipeline:
+def create_pipeline(profile, channel: str = "web", sample_rate: Optional[int] = None) -> VoicePipeline:
     """Factory helper to build a fully configured VoicePipeline with adaptive VAD & noise rejection."""
-    stt, llm, tts = build_adapters()
+    stt, llm, tts = build_adapters(channel=channel, sample_rate=sample_rate)
     vad_cfg = config.get("vad", {})
     return VoicePipeline(
         stt=stt,
@@ -212,7 +237,7 @@ async def universal_audio_stream(websocket: WebSocket, tenant_id: str):
     if not profile:
         profile = tenant_store.get_profile("apex-solar-solutions")
 
-    pipeline = create_pipeline(profile)
+    pipeline = create_pipeline(profile, channel="web", sample_rate=24000)
 
     # Outbound callback to stream audio chunks back over WebSocket
     def on_outbound_audio(chunk: bytes):
@@ -267,7 +292,7 @@ async def exotel_voice_stream(websocket: WebSocket, tenant_id: str):
     """
     await websocket.accept()
     profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("apex-solar-solutions")
-    pipeline = create_pipeline(profile)
+    pipeline = create_pipeline(profile, channel="telephony", sample_rate=8000)
 
     handler = ExotelStreamHandler(on_audio_chunk=pipeline.process_incoming_audio)
 
@@ -304,7 +329,7 @@ async def direct_sip_voice_stream(websocket: WebSocket, tenant_id: str):
     """
     await websocket.accept()
     profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("apex-solar-solutions")
-    pipeline = create_pipeline(profile)
+    pipeline = create_pipeline(profile, channel="telephony", sample_rate=8000)
 
     # Outbound callback to send raw audio frames back to the SIP Gateway
     def on_outbound_audio(chunk: bytes):
@@ -351,7 +376,7 @@ async def plivo_voice_stream(websocket: WebSocket, tenant_id: str):
     """
     await websocket.accept()
     profile = tenant_store.get_profile(tenant_id) or tenant_store.get_profile("apex-solar-solutions")
-    pipeline = create_pipeline(profile)
+    pipeline = create_pipeline(profile, channel="telephony", sample_rate=8000)
 
     handler = PlivoStreamHandler(on_audio_chunk=pipeline.process_incoming_audio)
 

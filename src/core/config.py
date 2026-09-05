@@ -36,8 +36,17 @@ class DeepgramTTSConfig(BaseModel):
     model: str = "aura-2-asteria-en"
     sample_rate: int = 24000
 
+class SarvamTTSConfig(BaseModel):
+    api_key: Optional[str] = None
+    model: str = "bulbul:v3"
+    speaker: str = "ritu"
+    target_language_code: str = "hi-IN"
+    sample_rate: int = 8000
+    pace: float = 1.0
+
 class TTSConfig(BaseModel):
     deepgram: DeepgramTTSConfig = Field(default_factory=DeepgramTTSConfig)
+    sarvam: SarvamTTSConfig = Field(default_factory=SarvamTTSConfig)
 
 class VADConfig(BaseModel):
     chunk_duration_ms: int = Field(20, ge=10)
@@ -70,6 +79,7 @@ class AppSettings(BaseSettings):
     # Env variables mapping
     GEMINI_API_KEY: Optional[str] = None
     DEEPGRAM_API_KEY: Optional[str] = None
+    SARVAM_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
@@ -93,6 +103,8 @@ def load_config() -> AppSettings:
         settings.tts.deepgram.api_key = settings.DEEPGRAM_API_KEY
     if settings.GEMINI_API_KEY:
         settings.llm.gemini.api_key = settings.GEMINI_API_KEY
+    if settings.SARVAM_API_KEY:
+        settings.tts.sarvam.api_key = settings.SARVAM_API_KEY
 
     # Fail fast if default keys are missing
     if settings.pipeline.default_llm == "gemini" and not settings.llm.gemini.api_key:
@@ -101,6 +113,8 @@ def load_config() -> AppSettings:
         raise ValueError("DEEPGRAM_API_KEY is required for STT")
     if settings.pipeline.default_tts == "deepgram" and not settings.tts.deepgram.api_key:
         raise ValueError("DEEPGRAM_API_KEY is required for TTS")
+    if settings.pipeline.default_tts == "sarvam" and not settings.tts.sarvam.api_key:
+        raise ValueError("SARVAM_API_KEY is required for Sarvam TTS")
 
     return settings
 
